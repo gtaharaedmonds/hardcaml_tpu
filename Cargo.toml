@@ -1,0 +1,3 @@
+[workspace]
+members = ["sw/lib/xilinx", "sw/lib/neorv32", "sw/app/blinky"]
+resolver = "3"

@@ -1,0 +1,11 @@
+[package]
+name = "xilinx"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+volatile-register = "0.2.2"
+neorv32 = { path = "../neorv32" }
+static_assertions = "1.1.0"
+bilge = "0.2.0"
+heapless = "0.8.0"

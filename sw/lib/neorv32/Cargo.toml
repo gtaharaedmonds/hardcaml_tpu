@@ -1,0 +1,12 @@
+[package]
+name = "neorv32"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bilge = "0.2.0"
+critical-section = "1.2.0"
+heapless = "0.8.0"
+riscv = { version = "0.13.0", features = ["critical-section-single-hart"] }
+riscv-rt = "0.14.0"
+volatile-register = "0.2.2"

@@ -1,0 +1,11 @@
+[package]
+name = "blinky"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+riscv-rt = "0.14.0"
+neorv32 = { path = "../../lib/neorv32" }
+xilinx = { path = "../../lib//xilinx" }
+volatile-register = "0.2.2"
+heapless = "0.8.0"
