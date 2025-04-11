@@ -1,5 +1,5 @@
 set_param board.repoPaths "../../boards/"
-set output_dir "outputs/"
+set output_dir "output/"
 
 open_checkpoint $output_dir/post_synth.dcp
 
@@ -25,20 +25,20 @@ proc bind_ports_vector_to_pins {port_format pin_format n} {
   }
 }
 
-bind_ports_vector_to_pins "leds\[%d\]"                  "led_16bits_tri_o_%d" 16
+bind_ports_vector_to_pins "leds\[%d\]"                  "led_16bits_tri_o_%d" 8
 bind_ports_vector_to_pins "switches\[%d\]"              "dip_switches_16bits_tri_i_%d" 16
 bind_port_to_pin          "sys_clock"                   "clk"
 bind_port_to_pin          "reset_n"                     "reset"
+bind_port_to_pin          "uart_rx"                     "usb_uart_rxd"
+bind_port_to_pin          "uart_tx"                     "usb_uart_txd"
 
 # bind_ports_vector_to_pins "eth_mii_rxd\[%d\]"        "eth_rxd_%d" 4
 # bind_port_to_pin          "eth_mii_rx_er"            "eth_rx_er"
 # bind_port_to_pin          "eth_mii_rx_dv"            "eth_rx_dv"
 # bind_port_to_pin          "eth_mii_rx_clk"           "eth_rx_clk"
 # bind_port_to_pin          "eth_mii_tx_clk"           "eth_tx_clk"
-
 # bind_port_to_pin          "eth_mii_tx_en"            "eth_tx_en"
 # bind_ports_vector_to_pins "eth_mii_txd\[%d\]"        "eth_txd_%d" 4
-
 # bind_port_to_pin          "mdc"                      "eth_mdc"
 
 opt_design

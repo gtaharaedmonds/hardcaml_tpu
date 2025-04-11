@@ -1,5 +1,5 @@
 set_param board.repoPaths "../../boards/"
-set output_dir "outputs/"
+set output_dir "output/"
 
 open_checkpoint $output_dir/post_place.dcp
 

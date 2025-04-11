@@ -1,4 +1,5 @@
 hardcaml_nexys_top.v
-outputs
+output
 .Xil
 vivado*
+clockinfo.txt

@@ -2,15 +2,16 @@ open Hardcaml
 
 module I : sig
   type 'a t = {
-    sys_clock : 'a;
+    clock : 'a;
     reset : 'a;
-    switches : 'a; [@bits Nexys.num_switches]
+    switches : 'a; [@bits 16]
+    axi_m2s : 'a Axi.Master_to_slave.t;
   }
   [@@deriving sexp_of, hardcaml]
 end
 
 module O : sig
-  type 'a t = { leds : 'a [@bits Nexys.num_leds] }
+  type 'a t = { axi_s2m : 'a Axi.Slave_to_master.t }
   [@@deriving sexp_of, hardcaml]
 end
 

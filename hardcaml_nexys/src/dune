@@ -1,5 +1,5 @@
 (library
  (name hardcaml_nexys)
- (libraries base hardcaml)
+ (libraries base hardcaml hardcaml_axi)
  (preprocess
   (pps ppx_deriving_hardcaml ppx_jane)))
