@@ -2,7 +2,7 @@ open! Base
 open! Hardcaml
 open! Signal
 
-type create_fn = Scope.t -> Signal.t User_app.I.t -> Signal.t User_app.O.t
+type create_fn = Scope.t -> Signal.t App.I.t -> Signal.t App.O.t
 
 module Top = struct
   module I = struct
@@ -28,7 +28,7 @@ module Top = struct
     let reset_n = clock_wizard.locked in
     let axi_s2m = Axi.Slave_to_master.Of_signal.wires () in
     let cpu =
-      Cpu.create
+      Neorv32.create
         {
           resetn = reset_n;
           clk = axi_clock;
@@ -37,8 +37,8 @@ module Top = struct
           axi_s2m;
         }
     in
-    let user_app =
-      User_app.hierarchical create_fn scope
+    let app =
+      App.hierarchical create_fn scope
         {
           clock = clock_wizard.clk_out1;
           reset = ~:reset_n;
@@ -46,15 +46,13 @@ module Top = struct
           axi_m2s = cpu.axi_m2s;
         }
     in
-    Axi.Slave_to_master.Of_signal.assign axi_s2m user_app.axi_s2m;
+    Axi.Slave_to_master.Of_signal.assign axi_s2m app.axi_s2m;
     { O.leds = cpu.gpio_o; uart_tx = cpu.uart0_txd_o }
 end
 
-let generate (create_fn : create_fn) (output_mode : Rtl.Output_mode.t) =
+let generate name (create_fn : create_fn) (output_mode : Rtl.Output_mode.t) =
   let module C = Circuit.With_interface (Top.I) (Top.O) in
   let scope = Scope.create () in
-  let circuit =
-    C.create_exn ~name:"hardcaml_nexys_top" (Top.create create_fn scope)
-  in
+  let circuit = C.create_exn ~name (Top.create create_fn scope) in
   let database = Scope.circuit_database scope in
   Rtl.output ~database ~output_mode Rtl.Language.Verilog circuit

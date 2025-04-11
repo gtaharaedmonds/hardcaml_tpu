@@ -2,14 +2,14 @@
 {
   "schema": "xilinx.com:schema:json_instance:1.0",
   "ip_inst": {
-    "xci_name": "hardcaml_nexys_clk_wiz_0_0",
+    "xci_name": "tpu_nexys_clk_wiz_0_0",
     "cell_name": "clk_wiz_0",
     "component_reference": "xilinx.com:ip:clk_wiz:6.0",
     "ip_revision": "14",
     "gen_directory": ".",
     "parameters": {
       "component_parameters": {
-        "Component_Name": [ { "value": "hardcaml_nexys_clk_wiz_0_0", "resolve_type": "user", "usage": "all" } ],
+        "Component_Name": [ { "value": "tpu_nexys_clk_wiz_0_0", "resolve_type": "user", "usage": "all" } ],
         "USER_CLK_FREQ0": [ { "value": "100.0", "resolve_type": "user", "format": "float", "usage": "all" } ],
         "USER_CLK_FREQ1": [ { "value": "100.0", "resolve_type": "user", "format": "float", "usage": "all" } ],
         "USER_CLK_FREQ2": [ { "value": "100.0", "resolve_type": "user", "format": "float", "usage": "all" } ],
@@ -291,7 +291,7 @@
         "C_USE_CLKOUT2_BAR": [ { "value": "0", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_USE_CLKOUT3_BAR": [ { "value": "0", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_USE_CLKOUT4_BAR": [ { "value": "0", "resolve_type": "generated", "format": "long", "usage": "all" } ],
-        "c_component_name": [ { "value": "hardcaml_nexys_clk_wiz_0_0", "resolve_type": "generated", "usage": "all" } ],
+        "c_component_name": [ { "value": "tpu_nexys_clk_wiz_0_0", "resolve_type": "generated", "usage": "all" } ],
         "C_PLATFORM": [ { "value": "UNKNOWN", "resolve_type": "generated", "usage": "all" } ],
         "C_USE_FREQ_SYNTH": [ { "value": "1", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_USE_PHASE_ALIGNMENT": [ { "value": "1", "resolve_type": "generated", "format": "long", "usage": "all" } ],
@@ -640,7 +640,7 @@
             "FREQ_HZ": [ { "value": "100000000", "value_src": "user_prop", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
             "FREQ_TOLERANCE_HZ": [ { "value": "0", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
             "PHASE": [ { "value": "0.0", "value_permission": "bd", "resolve_type": "generated", "format": "float", "is_ips_inferred": true, "is_static_object": false } ],
-            "CLK_DOMAIN": [ { "value": "hardcaml_nexys_sys_clk", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
+            "CLK_DOMAIN": [ { "value": "tpu_nexys_sys_clk", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
             "ASSOCIATED_BUSIF": [ { "value": "", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
             "ASSOCIATED_PORT": [ { "value": "", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
             "ASSOCIATED_RESET": [ { "value": "", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],

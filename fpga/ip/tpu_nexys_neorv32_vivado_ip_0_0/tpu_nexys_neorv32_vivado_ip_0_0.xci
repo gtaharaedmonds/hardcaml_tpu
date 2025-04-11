@@ -1,7 +1,7 @@
 {
   "schema": "xilinx.com:schema:json_instance:1.0",
   "ip_inst": {
-    "xci_name": "hardcaml_nexys_neorv32_vivado_ip_0_0",
+    "xci_name": "tpu_nexys_neorv32_vivado_ip_0_0",
     "cell_name": "neorv32_vivado_ip_0",
     "component_reference": "NEORV32:user:neorv32_vivado_ip:1.0",
     "ip_revision": "1",
@@ -98,7 +98,7 @@
         "IO_SLINK_RX_FIFO": [ { "value": "1", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
         "IO_SLINK_TX_FIFO": [ { "value": "1", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
         "IO_CRC_EN": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
-        "Component_Name": [ { "value": "hardcaml_nexys_neorv32_vivado_ip_0_0", "resolve_type": "user", "usage": "all" } ]
+        "Component_Name": [ { "value": "tpu_nexys_neorv32_vivado_ip_0_0", "resolve_type": "user", "usage": "all" } ]
       },
       "model_parameters": {
         "CLOCK_FREQUENCY": [ { "value": "100000000", "resolve_type": "generated", "format": "long", "usage": "all" } ],

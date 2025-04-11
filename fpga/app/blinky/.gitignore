@@ -1,4 +1,4 @@
-hardcaml_nexys_top.v
+blinky_top.v
 output
 .Xil
 vivado*

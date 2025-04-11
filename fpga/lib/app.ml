@@ -16,13 +16,7 @@ module O = struct
   [@@deriving sexp_of, hardcaml]
 end
 
-(* 
-let check_port_width (name, width) signal =
-  if width <> Signal.width signal then
-    raise_s [%message "Signal width mismatch" (name : string) (width : int)] *)
-
-let hierarchical ?(name = "user_application") create_fn scope input =
+let hierarchical ?(name = "app") create_fn scope input =
   let module Hierarchy = Hierarchy.In_scope (I) (O) in
-  (* I.(iter2 t input ~f:check_port_width); *)
   let output = Hierarchy.hierarchical ~name ~scope create_fn input in
   output

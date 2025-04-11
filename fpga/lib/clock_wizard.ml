@@ -11,4 +11,4 @@ end
 
 let create (input : _ I.t) =
   let module Inst = Instantiation.With_interface (I) (O) in
-  Inst.create ~name:"hardcaml_nexys_clk_wiz_0_0" input
+  Inst.create ~name:"tpu_nexys_clk_wiz_0_0" input

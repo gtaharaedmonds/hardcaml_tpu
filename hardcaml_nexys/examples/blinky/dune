@@ -1,3 +1,0 @@
-(executables
- (names blinky)
- (libraries base hardcaml hardcaml_nexys))
