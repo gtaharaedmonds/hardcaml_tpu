@@ -1,18 +1,11 @@
 open Hardcaml
 
 module I : sig
-  type 'a t = {
-    clock : 'a;
-    reset : 'a;
-    switches : 'a; [@bits 16]
-    axi_m2s : 'a Axi.Master_to_slave.t;
-  }
-  [@@deriving sexp_of, hardcaml]
+  type 'a t = { clock : 'a; reset : 'a } [@@deriving sexp_of, hardcaml]
 end
 
 module O : sig
-  type 'a t = { axi_s2m : 'a Axi.Slave_to_master.t }
-  [@@deriving sexp_of, hardcaml]
+  type 'a t = { unused : 'a } [@@deriving sexp_of, hardcaml]
 end
 
 val hierarchical :
