@@ -7,4 +7,4 @@ module Config = struct
   let data_bits = 32
 end
 
-include Hardcaml_axi.Lite.Make (Config)
+include Lite.Make (Config)

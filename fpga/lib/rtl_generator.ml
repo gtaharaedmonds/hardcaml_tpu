@@ -16,9 +16,9 @@ module System = struct
       sys_clk : 'a;
       switches : 'a; [@bits 8]
       uart_rx : 'a;
-      eth_rmii_in : 'a Rmii.I.t; [@rtlprefix "eth_rmii_"]
+      eth_rmii : 'a Rmii.I.t;
       eth_intn : 'a;
-      eth_mdio_i : 'a Mdio.I.t; [@rtlprefix "eth_"]
+      eth_mdio : 'a Mdio.I.t;
     }
     [@@deriving sexp_of, hardcaml]
   end
@@ -29,61 +29,39 @@ module System = struct
       uart_tx : 'a;
       eth_ref_clk : 'a;
       eth_rst_n : 'a;
-      eth_rmii_out : 'a Rmii.O.t; [@rtlprefix "eth_rmii_"]
-      eth_mdio_o : 'a Mdio.O.t; [@rtlprefix "eth_"]
+      eth_rmii : 'a Rmii.O.t;
+      eth_mdio : 'a Mdio.O.t;
     }
     [@@deriving sexp_of, hardcaml]
   end
 
   let create (create_fn : create_fn) scope (i : _ I.t) =
     let open Signal in
-    let {
-      Clock_wizard.O.locked = rst_n;
-      clk_out1 = axi_clk;
-      clk_out2 = phy_ref_clk;
-      clk_out3 = phy_ref_clk_delayed;
-    } =
-      Clock_wizard.create { clk_in1 = i.sys_clk; resetn = i.rst_n }
-    in
     let axi_s2m = Axi.Slave_to_master.Of_signal.wires () in
-    let cpu =
-      Neorv32.create
+    let bd =
+      Tpu_bd.create
         {
-          resetn = rst_n;
-          clk = axi_clk;
+          sys_clk = i.sys_clk;
+          rst_n = i.rst_n;
+          uart_rx = i.uart_rx;
           gpio_i = i.switches;
-          uart0_rxd_i = i.uart_rx;
-          axi_s2m;
+          eth_rmii = i.eth_rmii;
+          eth_mdio = i.eth_mdio;
+          axi = axi_s2m;
         }
     in
-    let mii_out = Mii.O.Of_signal.wires () in
-    let mii_to_rmii =
-      Mii_to_rmii.create
-        { rst_n; ref_clk = phy_ref_clk; mii_out; rmii_in = i.eth_rmii_in }
-    in
-    let eth =
-      Ethernet.create
-        {
-          s_axi_aresetn = rst_n;
-          s_axi_aclk = axi_clk;
-          axi_m2s = cpu.axi_m2s;
-          mii_in = mii_to_rmii.mii_in;
-          mdio_i = i.eth_mdio_i;
-        }
-    in
-    Axi.Slave_to_master.Of_signal.assign axi_s2m eth.axi_s2m;
-    Mii.O.Of_signal.assign mii_out eth.mii_out;
     let app =
-      App.hierarchical create_fn scope { clock = axi_clk; reset = ~:rst_n }
+      App.hierarchical create_fn scope
+        { clock = bd.s_axi_aclk; reset = ~:(bd.s_axi_aresetn); axi = bd.axi }
     in
-    ignore app;
+    Axi.Slave_to_master.Of_signal.assign axi_s2m app.axi;
     {
-      O.leds = cpu.gpio_o;
-      uart_tx = cpu.uart0_txd_o;
-      eth_ref_clk = phy_ref_clk_delayed;
-      eth_rst_n = eth.phy_rst_n;
-      eth_rmii_out = mii_to_rmii.rmii_out;
-      eth_mdio_o = eth.mdio_o;
+      O.leds = bd.gpio_o;
+      uart_tx = bd.uart_tx;
+      eth_ref_clk = bd.eth_refclk;
+      eth_rst_n = bd.eth_rst_n;
+      eth_rmii = bd.eth_rmii;
+      eth_mdio = bd.eth_mdio;
     }
 end
 
@@ -94,7 +72,7 @@ module Top = struct
       sys_clk : 'a;
       switches : 'a; [@bits 8]
       uart_rx : 'a;
-      eth_rmii_in : 'a Rmii.I.t; [@rtlprefix "eth_rmii_"]
+      eth_rmii : 'a Rmii.I.t; [@rtlprefix "eth_rmii_"]
       eth_intn : 'a;
     }
     [@@deriving sexp_of, hardcaml]
@@ -106,7 +84,7 @@ module Top = struct
       uart_tx : 'a;
       eth_ref_clk : 'a;
       eth_rst_n : 'a;
-      eth_rmii_out : 'a Rmii.O.t; [@rtlprefix "eth_rmii_"]
+      eth_rmii : 'a Rmii.O.t; [@rtlprefix "eth_rmii_"]
       eth_mdc : 'a;
     }
     [@@deriving sexp_of, hardcaml]
@@ -143,9 +121,9 @@ module Top = struct
         sys_clk = i.sys_clk;
         switches = i.switches;
         uart_rx = i.uart_rx;
-        eth_rmii_in = i.eth_rmii_in;
+        eth_rmii = i.eth_rmii;
         eth_intn = i.eth_intn;
-        eth_mdio_i = { Mdio.I.mdio_i };
+        eth_mdio = { Mdio.I.mdio_i };
       }
     in
     let system_o =
@@ -154,18 +132,18 @@ module Top = struct
         uart_tx = o.uart_tx;
         eth_ref_clk = o.eth_ref_clk;
         eth_rst_n = o.eth_rst_n;
-        eth_rmii_out = o.eth_rmii_out;
-        eth_mdio_o = { Mdio.O.mdc = o.eth_mdc; mdio_o; mdio_t };
+        eth_rmii = o.eth_rmii;
+        eth_mdio = { Mdio.O.mdc = o.eth_mdc; mdio_o; mdio_t };
       }
     in
-    C_iobuf.inst "IOBUF"
-      { Iobuf.I.i = mdio_o; t = mdio_t }
-      { Iobuf.O.o = mdio_i }
-      { Iobuf.T.io = t.eth_mdio };
     inst
       ~i:(System.I.to_list (System.I.zip System.I.port_names system_i))
       ~o:(System.O.to_list (System.O.zip System.O.port_names system_o))
-      (name ^ "_system")
+      (name ^ "_system");
+    C_iobuf.inst "IOBUF"
+      { Iobuf.I.i = mdio_o; t = mdio_t }
+      { Iobuf.O.o = mdio_i }
+      { Iobuf.T.io = t.eth_mdio }
 end
 
 let generate_system name (create_fn : create_fn) =

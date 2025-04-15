@@ -6,5 +6,3 @@ rustflags = [
     "link-arg=-Tlink.x",
 ]
 
-[build]
-target = "riscv32imac-unknown-none-elf"

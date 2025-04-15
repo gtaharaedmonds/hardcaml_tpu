@@ -2,11 +2,12 @@ open! Base
 open Hardcaml
 
 module I = struct
-  type 'a t = { clock : 'a; reset : 'a } [@@deriving sexp_of, hardcaml]
+  type 'a t = { clock : 'a; reset : 'a; axi : 'a Axi.Master_to_slave.t }
+  [@@deriving sexp_of, hardcaml]
 end
 
 module O = struct
-  type 'a t = { unused : 'a } [@@deriving sexp_of, hardcaml]
+  type 'a t = { axi : 'a Axi.Slave_to_master.t } [@@deriving sexp_of, hardcaml]
 end
 
 let hierarchical ?(name = "app") create_fn scope input =
