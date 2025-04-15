@@ -4,6 +4,7 @@ demo_system.exe: ../../../_build/default/fpga/app/demo_system/demo_system.exe
 	dune build demo_system.exe
 
 output/demo_system_top.v: ../../../_build/default/fpga/app/demo_system/demo_system.exe
+	mkdir -p output
 	$< >$@
 
 output/post_synth.dcp: synth.tcl output/demo_system_top.v

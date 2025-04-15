@@ -1,3 +1,3 @@
-[submodule "hardcaml_arty"]
-	path = hardcaml_arty
-	url = https://github.com/fyquah/hardcaml_arty.git
+[submodule "external/neorv32"]
+	path = external/neorv32
+	url = https://github.com/gtaharaedmonds/neorv32.git

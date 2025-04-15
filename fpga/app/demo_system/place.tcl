@@ -1,4 +1,4 @@
-set output_dir "output/"
+set output_dir ./output
 
 open_checkpoint $output_dir/post_synth.dcp
 
