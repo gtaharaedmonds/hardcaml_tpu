@@ -1,3 +1,5 @@
 (executables
  (names demo_system)
- (libraries base hardcaml tpu_nexys))
+ (libraries base hardcaml tpu_nexys)
+ (preprocess
+  (pps ppx_jane)))

@@ -2,14 +2,14 @@ open! Base
 open! Hardcaml
 
 (* I don't think Hardcaml.Signal supports tri-state logic? (Which I need for
-MDIO to configure the PHY!) So I've made a System module, which has basically
-the entire design and uses Hardcaml.Signal, and a wrapper Top module which
-instantiates the tri-state buffer. Top uses Hardcaml.Structural instead which
-supports tri-state logic. *)
+MDIO to configure the PHY!) So I've made a "nexys" module, which has basically
+the entire design and uses Hardcaml.Signal, and a wrapper "top" module which
+instantiates the tri-state buffer. The top uses Hardcaml.Structural instead
+which supports tri-state logic. *)
 
 type create_fn = Scope.t -> Signal.t App.I.t -> Signal.t App.O.t
 
-module System = struct
+module Nexys = struct
   module I = struct
     type 'a t = {
       rst_n : 'a;
@@ -115,9 +115,9 @@ module Top = struct
     let mdio_i = mk_wire 1 in
     let mdio_o = mk_wire 1 in
     let mdio_t = mk_wire 1 in
-    let system_i =
+    let nexys_i =
       {
-        System.I.rst_n = i.rst_n;
+        Nexys.I.rst_n = i.rst_n;
         sys_clk = i.sys_clk;
         switches = i.switches;
         uart_rx = i.uart_rx;
@@ -126,9 +126,9 @@ module Top = struct
         eth_mdio = { Mdio.I.mdio_i };
       }
     in
-    let system_o =
+    let nexys_o =
       {
-        System.O.leds = o.leds;
+        Nexys.O.leds = o.leds;
         uart_tx = o.uart_tx;
         eth_ref_clk = o.eth_ref_clk;
         eth_rst_n = o.eth_rst_n;
@@ -137,19 +137,19 @@ module Top = struct
       }
     in
     inst
-      ~i:(System.I.to_list (System.I.zip System.I.port_names system_i))
-      ~o:(System.O.to_list (System.O.zip System.O.port_names system_o))
-      (name ^ "_system");
+      ~i:(Nexys.I.to_list (Nexys.I.zip Nexys.I.port_names nexys_i))
+      ~o:(Nexys.O.to_list (Nexys.O.zip Nexys.O.port_names nexys_o))
+      (name ^ "_nexys");
     C_iobuf.inst "IOBUF"
       { Iobuf.I.i = mdio_o; t = mdio_t }
       { Iobuf.O.o = mdio_i }
       { Iobuf.T.io = t.eth_mdio }
 end
 
-let generate_system name (create_fn : create_fn) =
-  let module C = Circuit.With_interface (System.I) (System.O) in
+let generate_nexys name (create_fn : create_fn) =
+  let module C = Circuit.With_interface (Nexys.I) (Nexys.O) in
   let scope = Scope.create () in
-  let circuit = C.create_exn ~name (System.create create_fn scope) in
+  let circuit = C.create_exn ~name (Nexys.create create_fn scope) in
   let database = Scope.circuit_database scope in
   let buf = Buffer.create 1024 in
   Rtl.output ~database ~output_mode:(Rtl.Output_mode.To_buffer buf)
@@ -164,6 +164,6 @@ let generate_top name =
   !rtl
 
 let generate name (create_fn : create_fn) =
-  let system = generate_system (name ^ "_system") create_fn in
+  let nexys = generate_nexys (name ^ "_nexys") create_fn in
   let top = generate_top name in
-  system ^ "\n" ^ top
+  nexys ^ "\n" ^ top

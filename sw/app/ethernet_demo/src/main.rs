@@ -37,7 +37,7 @@ fn main() -> ! {
     let mut phy = ethernet.phy(PHY_ADDR);
     phy.configure(PhySpeed::Speed100M, PhyDuplex::Full);
     println!("Done configuring PHY");
-
+    
     loop {
         gpio.write_output(7, true);
         delay_ms(500);
