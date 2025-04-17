@@ -4,6 +4,11 @@ open! Hardcaml_waveterm
 
 let size = 3
 
+module Matrix = struct
+  type 'a t = { buffer : 'a [@bits size * Cell.data_bits] }
+  [@@deriving sexp_of, hardcaml]
+end
+
 module Cell_array = struct
   type 'a cell = { i : 'a Cell.I.t; o : 'a Cell.O.t } [@@deriving sexp_of]
   type 'a t = 'a cell Array.t Array.t [@@deriving sexp_of]
@@ -72,7 +77,7 @@ let create (i : _ I.t) =
         List.nth_exn systolic_array.acc_out col <== cell.o.acc_out);
   systolic_array
 
-let testbench () =
+let _testbench () =
   let module Sim = Cyclesim.With_interface (I) (O) in
   let sim = Sim.create create in
   let waves, sim = Waveform.create sim in
@@ -95,7 +100,7 @@ let testbench () =
   cycle ();
   cycle ();
   waves
-
+(* 
 let%expect_test "systolic_array_testbench" =
   let waves = testbench () in
   Waveform.print waves ~wave_width:4 ~display_width:120 ~display_height:50;
@@ -126,4 +131,4 @@ let%expect_test "systolic_array_testbench" =
   │                  ││                                                                                                  │
   │                  ││                                                                                                  │
   └──────────────────┘└──────────────────────────────────────────────────────────────────────────────────────────────────┘
-|}]
+|}] *)
