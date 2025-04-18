@@ -18,7 +18,7 @@ module type S = sig
       clock : 'a;
       reset : 'a;
       clear : 'a;
-      load : 'a;
+      start : 'a;
       weight_in : 'a Weight_matrix.t;
       data_in : 'a Data_matrix.t;
     }
@@ -26,7 +26,8 @@ module type S = sig
   end
 
   module O : sig
-    type 'a t = { acc_out : 'a Acc_matrix.t } [@@deriving sexp_of, hardcaml]
+    type 'a t = { acc_out : 'a Acc_matrix.t; ready : 'a; finished : 'a }
+    [@@deriving sexp_of, hardcaml]
   end
 
   val create : Signal.t I.t -> Signal.t O.t

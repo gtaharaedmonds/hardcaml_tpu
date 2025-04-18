@@ -36,7 +36,7 @@ module Make (Config : Config) = struct
       clock : 'a;
       reset : 'a;
       clear : 'a;
-      load : 'a;
+      start : 'a;
       weight_in : 'a Weight_matrix.t; [@rtlprefix "weight_in_"]
       data_in : 'a Data_matrix.t; [@rtlprefix "data_in_"]
     }
@@ -44,9 +44,52 @@ module Make (Config : Config) = struct
   end
 
   module O = struct
-    type 'a t = { acc_out : 'a Acc_matrix.t [@rtlprefix "acc_out_"] }
+    type 'a t = {
+      acc_out : 'a Acc_matrix.t; [@rtlprefix "acc_out_"]
+      ready : 'a;
+      finished : 'a;
+    }
     [@@deriving sexp_of, hardcaml]
   end
+
+  module States = struct
+    type t = Ready | Running | Finished
+    [@@deriving sexp_of, compare, enumerate]
+  end
+
+  let create_sm (i : _ I.t) =
+    let open Signal in
+    let reg_spec =
+      Reg_spec.create ~clock:i.clock ~reset:i.reset ~clear:i.clear ()
+    in
+    let max_count = (3 * size) - 3 in
+    let count =
+      Always.Variable.reg ~width:(Int.ceil_log2 (max_count + 1)) reg_spec
+    in
+    let ready = Always.Variable.wire ~default:gnd in
+    let finished = Always.Variable.wire ~default:gnd in
+    let sm = Always.State_machine.create (module States) reg_spec in
+    Always.(
+      compile
+        [
+          sm.switch
+            [
+              ( States.Ready,
+                [
+                  ready <--. 1;
+                  when_ i.start [ count <--. 0; sm.set_next States.Running ];
+                ] );
+              ( States.Running,
+                [
+                  count <-- count.value +:. 1;
+                  when_
+                    (count.value ==:. max_count)
+                    [ sm.set_next States.Finished ];
+                ] );
+              (States.Finished, [ finished <--. 1; sm.set_next States.Ready ]);
+            ];
+        ]);
+    (ready.value, finished.value)
 
   let create (i : _ I.t) =
     let open Signal in
@@ -55,7 +98,7 @@ module Make (Config : Config) = struct
         {
           Data_wavefront.I.clock = i.clock;
           reset = i.reset;
-          load = i.load;
+          load = i.start;
           data = i.data_in;
         }
     in
@@ -64,7 +107,7 @@ module Make (Config : Config) = struct
         {
           Weight_wavefront.I.clock = i.clock;
           reset = i.reset;
-          load = i.load;
+          load = i.start;
           data = i.weight_in;
         }
     in
@@ -93,10 +136,13 @@ module Make (Config : Config) = struct
         <==
         if col = 0 then List.nth_exn weight_wavefront.wavefront row
         else (Grid.get cell_outs ~row ~col:(col - 1)).weight_out);
+    let ready, finished = create_sm i in
     {
       O.acc_out =
         Acc_matrix.create ~f:(fun row col ->
             (Grid.get cell_outs ~row ~col).acc_out);
+      finished;
+      ready;
     }
 end
 
@@ -125,11 +171,9 @@ let testbench () =
   assign_data ~f:(fun row col -> (row * size) + col + 1);
   assign_weight ~f:(fun row col -> (row * size) + col + 1);
   cycle ();
-  i.load := Bits.vdd;
+  i.start := Bits.vdd;
   cycle ();
-  i.load := Bits.gnd;
-  cycle ();
-  cycle ();
+  i.start := Bits.gnd;
   cycle ();
   cycle ();
   cycle ();
@@ -141,7 +185,7 @@ let testbench () =
 
 let%expect_test "systolic_array_testbench" =
   let waves = testbench () in
-  Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:46;
+  Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:50;
   [%expect
     {|
     ┌Signals───────────┐┌Waves───────────────────────────────────────────────────────────────────────────────────┐
@@ -163,7 +207,7 @@ let%expect_test "systolic_array_testbench" =
     │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
     │data_in_elements11││ 00       │04                                                                           │
     │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
-    │load              ││                    ┌─────────┐                                                         │
+    │start             ││                    ┌─────────┐                                                         │
     │                  ││────────────────────┘         └─────────────────────────────────────────────────────────│
     │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
     │weight_in_elements││ 00       │01                                                                           │
@@ -189,5 +233,10 @@ let%expect_test "systolic_array_testbench" =
     │                  ││────────────────────────────────────────────────────────────┬─────────┬─────────────────│
     │acc_out_elements11││ 00000000                                                   │00000006 │00000016         │
     │                  ││────────────────────────────────────────────────────────────┴─────────┴─────────────────│
+    │finished          ││                                                                      ┌─────────┐       │
+    │                  ││──────────────────────────────────────────────────────────────────────┘         └───────│
+    │ready             ││──────────────────────────────┐                                                 ┌───────│
+    │                  ││                              └─────────────────────────────────────────────────┘       │
     └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────┘
+
 |}]
