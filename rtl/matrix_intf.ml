@@ -1,6 +1,8 @@
 open! Base
 open! Hardcaml
 
+(* 2D array type for Hardcaml *)
+
 module type Config = sig
   val size : int
   val bits : int

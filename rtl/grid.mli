@@ -1,5 +1,7 @@
 open Base
 
+(* basic 2D array type *)
+
 type 'a t = 'a Array.t Array.t
 
 val create : int -> f:(int -> int -> 'a) -> 'a t
