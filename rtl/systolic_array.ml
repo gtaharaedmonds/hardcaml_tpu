@@ -1,134 +1,193 @@
 open! Base
 open! Hardcaml
 open! Hardcaml_waveterm
+include Systolic_array_intf
 
-let size = 3
+module Make (Config : Config) = struct
+  module Config = Config
+  open Config
 
-module Matrix = struct
-  type 'a t = { buffer : 'a [@bits size * Cell.data_bits] }
-  [@@deriving sexp_of, hardcaml]
-end
+  module Data_matrix = Matrix.Make (struct
+    let bits = data_bits
+    let size = size
+  end)
 
-module Cell_array = struct
-  type 'a cell = { i : 'a Cell.I.t; o : 'a Cell.O.t } [@@deriving sexp_of]
-  type 'a t = 'a cell Array.t Array.t [@@deriving sexp_of]
+  module Weight_matrix = Matrix.Make (struct
+    let bits = weight_bits
+    let size = size
+  end)
 
-  let create size (f : unit -> _ cell) =
-    Array.init size ~f:(fun _ -> Array.init size ~f:(fun _ -> f ()))
+  module Acc_matrix = Matrix.Make (struct
+    let bits = acc_bits
+    let size = size
+  end)
 
-  let get (t : _ t) row col =
-    let row_arr = Array.get t row in
-    Array.get row_arr col
+  module Mac_cell = Mac_cell.Make (struct
+    let data_bits = data_bits
+    let weight_bits = weight_bits
+    let acc_bits = acc_bits
+  end)
 
-  let iteri (t : _ t) f =
-    Array.iteri t ~f:(fun row row_arr ->
-        Array.iteri row_arr ~f:(fun col cell -> f row col cell))
-end
+  module Data_wavefront = Triangular_wavefront.Make (Data_matrix)
+  module Weight_wavefront = Triangular_wavefront.Make (Weight_matrix)
 
-module I = struct
-  type 'a t = {
-    clock : 'a;
-    reset : 'a;
-    clear : 'a;
-    weight_in : 'a list; [@bits Cell.weight_bits] [@length size]
-    data_in : 'a list; [@bits Cell.data_bits] [@length size]
-  }
-  [@@deriving sexp_of, hardcaml]
-end
+  module I = struct
+    type 'a t = {
+      clock : 'a;
+      reset : 'a;
+      clear : 'a;
+      load : 'a;
+      weight_in : 'a Weight_matrix.t; [@rtlprefix "weight_in_"]
+      data_in : 'a Data_matrix.t; [@rtlprefix "data_in_"]
+    }
+    [@@deriving sexp_of, hardcaml]
+  end
 
-module O = struct
-  type 'a t = { acc_out : 'a list [@bits Cell.acc_bits] [@length size] }
-  [@@deriving sexp_of, hardcaml]
-end
+  module O = struct
+    type 'a t = { acc_out : 'a Acc_matrix.t [@rtlprefix "acc_out_"] }
+    [@@deriving sexp_of, hardcaml]
+  end
 
-let create (i : _ I.t) =
-  let open Signal in
-  let cell_array =
-    Cell_array.create size (fun () ->
-        let i =
+  let create (i : _ I.t) =
+    let open Signal in
+    let data_wavefront =
+      Data_wavefront.create ~transpose:true
+        {
+          Data_wavefront.I.clock = i.clock;
+          reset = i.reset;
+          load = i.load;
+          data = i.data_in;
+        }
+    in
+    let weight_wavefront =
+      Weight_wavefront.create ~transpose:false
+        {
+          Weight_wavefront.I.clock = i.clock;
+          reset = i.reset;
+          load = i.load;
+          data = i.weight_in;
+        }
+    in
+    let cell_ins =
+      Grid.create size ~f:(fun _ _ ->
           {
-            Cell.I.clock = i.clock;
+            Mac_cell.I.clock = i.clock;
             reset = i.reset;
             clear = i.clear;
-            weight_in = wire Cell.weight_bits;
-            data_in = wire Cell.data_bits;
-          }
-        in
-        { Cell_array.i; o = Cell.create i })
-  in
-  let systolic_array =
-    { O.acc_out = List.init size ~f:(fun _ -> wire Cell.acc_bits) }
-  in
-  ignore Cell_array.get;
-  Cell_array.iteri cell_array (fun row col cell ->
-      (* connect cell data outputs to adjacent data inputs *)
-      if row = 0 then cell.i.data_in <== List.nth_exn i.data_in col
-      else
-        cell.i.data_in <== (Cell_array.get cell_array (row - 1) col).o.data_out;
+            weight_in = wire weight_bits;
+            data_in = wire data_bits;
+          })
+    in
+    let cell_outs =
+      Grid.mapi cell_ins ~f:(fun _ _ cell_in -> Mac_cell.create cell_in)
+    in
+    Grid.iteri cell_ins ~f:(fun row col cell_in ->
+        (* connect cell data outputs to adjacent data inputs *)
+        cell_in.data_in
+        <==
+        if row = 0 then List.nth_exn data_wavefront.wavefront col
+        else (Grid.get cell_outs ~row:(row - 1) ~col).data_out;
 
-      (* connect cell weight outputs to adjacent weight inputs *)
-      if col = 0 then cell.i.weight_in <== List.nth_exn i.weight_in row
-      else
-        cell.i.weight_in
-        <== (Cell_array.get cell_array row (col - 1)).o.weight_out;
+        (* connect cell weight outputs to adjacent weight inputs *)
+        cell_in.weight_in
+        <==
+        if col = 0 then List.nth_exn weight_wavefront.wavefront row
+        else (Grid.get cell_outs ~row ~col:(col - 1)).weight_out);
+    {
+      O.acc_out =
+        Acc_matrix.create ~f:(fun row col ->
+            (Grid.get cell_outs ~row ~col).acc_out);
+    }
+end
 
-      (* for debugging: connect last row to output accs *)
-      if row = size - 1 then
-        List.nth_exn systolic_array.acc_out col <== cell.o.acc_out);
-  systolic_array
-
-let _testbench () =
+let testbench () =
+  let open Make (struct
+    let data_bits = 8
+    let weight_bits = 8
+    let acc_bits = 32
+    let size = 2
+  end) in
+  let open Config in
   let module Sim = Cyclesim.With_interface (I) (O) in
   let sim = Sim.create create in
   let waves, sim = Waveform.create sim in
   let i = Cyclesim.inputs sim in
   let cycle () = Cyclesim.cycle sim in
-  let assign_data lst =
-    List.iter2_exn lst i.data_in ~f:(fun num d ->
-        d := Bits.of_int ~width:Cell.data_bits num)
+  let assign_data ~f =
+    Data_matrix.iteri i.data_in ~f:(fun row col d ->
+        d := Bits.of_int ~width:data_bits (f row col))
   in
-  let assign_weight lst =
-    List.iter2_exn lst i.weight_in ~f:(fun num w ->
-        w := Bits.of_int ~width:Cell.weight_bits num)
+  let assign_weight ~f =
+    Weight_matrix.iteri i.weight_in ~f:(fun row col d ->
+        d := Bits.of_int ~width:data_bits (f row col))
   in
   cycle ();
-  assign_data [ 0x32; 0x64; 0x128 ];
-  assign_weight [ 0x2; 0x4; 0x8 ];
+  assign_data ~f:(fun row col -> (row * size) + col + 1);
+  assign_weight ~f:(fun row col -> (row * size) + col + 1);
+  cycle ();
+  i.load := Bits.vdd;
+  cycle ();
+  i.load := Bits.gnd;
+  cycle ();
+  cycle ();
+  cycle ();
+  cycle ();
   cycle ();
   cycle ();
   cycle ();
   cycle ();
   cycle ();
   waves
-(* 
+
 let%expect_test "systolic_array_testbench" =
   let waves = testbench () in
-  Waveform.print waves ~wave_width:4 ~display_width:120 ~display_height:50;
+  Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:46;
   [%expect
     {|
-  ┌Signals───────────┐┌Waves─────────────────────────────────────────────────────────────────────────────────────────────┐
-  │clock             ││┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐  │
-  │                  ││     └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └──│
-  │reset             ││                                                                                                  │
-  │                  ││──────────────────────────────────────────────────────────────────────────────────────────        │
-  │clear             ││                                                  ┌─────────┐                                     │
-  │                  ││──────────────────────────────────────────────────┘         └─────────────────────────────        │
-  │                  ││──────────┬─────────┬─────────┬───────────────────────────────────────┬───────────────────        │
-  │data_in           ││ 00       │08       │03       │00                                     │52                         │
-  │                  ││──────────┴─────────┴─────────┴───────────────────────────────────────┴───────────────────        │
-  │                  ││──────────┬─────────┬─────────┬───────────────────────────────────────┬───────────────────        │
-  │weight_in         ││ 00       │09       │04       │00                                     │68                         │
-  │                  ││──────────┴─────────┴─────────┴───────────────────────────────────────┴───────────────────        │
-  │                  ││────────────────────┬─────────┬─────────────────────────────┬───────────────────┬─────────        │
-  │acc_out           ││ 00000000           │00000048 │00000054                     │00000000           │00002150         │
-  │                  ││────────────────────┴─────────┴─────────────────────────────┴───────────────────┴─────────        │
-  │                  ││────────────────────┬─────────┬─────────┬───────────────────────────────────────┬─────────        │
-  │data_out          ││ 00                 │08       │03       │00                                     │52               │
-  │                  ││────────────────────┴─────────┴─────────┴───────────────────────────────────────┴─────────        │
-  │                  ││────────────────────┬─────────┬─────────┬───────────────────────────────────────┬─────────        │
-  │weight_out        ││ 00                 │09       │04       │00                                     │68               │
-  │                  ││────────────────────┴─────────┴─────────┴───────────────────────────────────────┴─────────        │
-  │                  ││                                                                                                  │
-  │                  ││                                                                                                  │
-  └──────────────────┘└──────────────────────────────────────────────────────────────────────────────────────────────────┘
-|}] *)
+    ┌Signals───────────┐┌Waves───────────────────────────────────────────────────────────────────────────────────┐
+    │clock             ││┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐  │
+    │                  ││     └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └──│
+    │reset             ││                                                                                        │
+    │                  ││────────────────────────────────────────────────────────────────────────────────────────│
+    │clear             ││                                                                                        │
+    │                  ││────────────────────────────────────────────────────────────────────────────────────────│
+    │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
+    │data_in_elements00││ 00       │01                                                                           │
+    │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
+    │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
+    │data_in_elements01││ 00       │03                                                                           │
+    │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
+    │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
+    │data_in_elements10││ 00       │02                                                                           │
+    │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
+    │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
+    │data_in_elements11││ 00       │04                                                                           │
+    │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
+    │load              ││                    ┌─────────┐                                                         │
+    │                  ││────────────────────┘         └─────────────────────────────────────────────────────────│
+    │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
+    │weight_in_elements││ 00       │01                                                                           │
+    │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
+    │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
+    │weight_in_elements││ 00       │03                                                                           │
+    │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
+    │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
+    │weight_in_elements││ 00       │02                                                                           │
+    │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
+    │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
+    │weight_in_elements││ 00       │04                                                                           │
+    │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
+    │                  ││────────────────────────────────────────┬─────────┬─────────────────────────────────────│
+    │acc_out_elements00││ 00000000                               │00000001 │00000007                             │
+    │                  ││────────────────────────────────────────┴─────────┴─────────────────────────────────────│
+    │                  ││──────────────────────────────────────────────────┬─────────┬───────────────────────────│
+    │acc_out_elements01││ 00000000                                         │00000003 │0000000F                   │
+    │                  ││──────────────────────────────────────────────────┴─────────┴───────────────────────────│
+    │                  ││──────────────────────────────────────────────────┬─────────┬───────────────────────────│
+    │acc_out_elements10││ 00000000                                         │00000002 │0000000A                   │
+    │                  ││──────────────────────────────────────────────────┴─────────┴───────────────────────────│
+    │                  ││────────────────────────────────────────────────────────────┬─────────┬─────────────────│
+    │acc_out_elements11││ 00000000                                                   │00000006 │00000016         │
+    │                  ││────────────────────────────────────────────────────────────┴─────────┴─────────────────│
+    └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────┘
+|}]
