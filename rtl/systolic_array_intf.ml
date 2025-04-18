@@ -17,7 +17,7 @@ module type S = sig
     type 'a t = {
       clock : 'a;
       reset : 'a;
-      clear : 'a;
+      clear_accs : 'a;
       start : 'a;
       weight_in : 'a Weight_matrix.t;
       data_in : 'a Data_matrix.t;
