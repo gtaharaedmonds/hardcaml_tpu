@@ -17,7 +17,6 @@ module type S = sig
       reset : 'a;
       clock : 'a;
       clear_accs : 'a;
-      swap_accs : 'a;
       weight_in : 'a;
       data_in : 'a;
     }
@@ -25,7 +24,7 @@ module type S = sig
   end
 
   module O : sig
-    type 'a t = { weight_out : 'a; data_out : 'a; acc_out : 'a; acc_buf : 'a }
+    type 'a t = { weight_out : 'a; data_out : 'a; acc_out : 'a }
     [@@deriving sexp_of, hardcaml]
   end
 

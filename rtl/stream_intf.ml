@@ -27,14 +27,34 @@ module type S = sig
   module Config : Config
   module Source : Source
   module Dest : Dest
+
+  (* helper functions for testing with AXI-Streams *)
+  module Test : sig
+    val send :
+      ('a, 'b) Cyclesim.t ->
+      Bits.t ref Source.t ->
+      Bits.t ref Dest.t ->
+      Bits.t ->
+      unit
+
+    val receive :
+      ('a, 'b) Cyclesim.t ->
+      Bits.t ref Source.t ->
+      Bits.t ref Dest.t ->
+      len:int ->
+      Bits.t
+  end
 end
 
+(* adapter to convert between AXI streams of different bit widths *)
 module type Adapter = sig
   module Master : S
   module Slave : S
 
-  (* module I : sig
+  module I : sig
     type 'a t = {
+      reset : 'a;
+      clock : 'a;
       master_source : 'a Master.Source.t;
       slave_dest : 'a Slave.Dest.t;
     }
@@ -49,10 +69,10 @@ module type Adapter = sig
     [@@deriving hardcaml]
   end
 
-  val create : Signal.t I.t -> Signal.t O.t *)
+  val create : Signal.t I.t -> Signal.t O.t
 end
 
-module type Axi_stream = sig
+module type Stream = sig
   module type S = S
 
   module Make (Config : Config) : S

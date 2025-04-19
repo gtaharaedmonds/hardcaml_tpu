@@ -21,6 +21,7 @@ module type S = sig
   val get : 'a t -> row:int -> col:int -> 'a
   val iteri : 'a t -> f:(int -> int -> 'a -> unit) -> unit
   val mapi : 'a t -> f:(int -> int -> 'a -> 'b) -> 'b t
+  val pp : 'a t -> ('a -> String.t) -> unit
 end
 
 module type Matrix = sig

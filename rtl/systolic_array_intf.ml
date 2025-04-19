@@ -20,6 +20,7 @@ module type S = sig
       reset : 'a;
       clear_accs : 'a;
       start : 'a;
+      ack_out : 'a;
       weight_in : 'a Weight_matrix.t;
       data_in : 'a Data_matrix.t;
     }
