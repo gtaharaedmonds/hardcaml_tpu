@@ -13,6 +13,7 @@ read_xdc constraints.xdc
 
 # Import block diagram.
 exec rm -rf $output_dir/bd
+set ::origin_dir_loc output/bd
 source ../../bd/tpu_bd.tcl
 close_bd_design [get_bd_designs tpu_bd]
 generate_target all [get_files output/bd/tpu_bd/tpu_bd.bd]
@@ -23,6 +24,9 @@ set ip_list {
     tpu_bd_axi_ethernetlite_0_0
     tpu_bd_mii_to_rmii_0_0
     tpu_bd_xbar_0
+    tpu_bd_blk_mem_gen_0_0
+    tpu_bd_axi_bram_ctrl_0_0
+    tpu_bd_auto_pc_0
 }
 
 # Export IP cache for each IP.

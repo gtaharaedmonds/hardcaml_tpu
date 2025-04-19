@@ -37,7 +37,6 @@ module Nexys = struct
 
   let create (create_fn : create_fn) scope (i : _ I.t) =
     let open Signal in
-    let axi_s2m = Axi.Slave_to_master.Of_signal.wires () in
     let bd =
       Tpu_bd.create
         {
@@ -47,14 +46,13 @@ module Nexys = struct
           gpio_i = i.switches;
           eth_rmii = i.eth_rmii;
           eth_mdio = i.eth_mdio;
-          axi = axi_s2m;
         }
     in
     let app =
       App.hierarchical create_fn scope
-        { clock = bd.s_axi_aclk; reset = ~:(bd.s_axi_aresetn); axi = bd.axi }
+        { clock = bd.s_axi_aclk; reset = ~:(bd.s_axi_aresetn) }
     in
-    Axi.Slave_to_master.Of_signal.assign axi_s2m app.axi;
+    ignore app;
     {
       O.leds = bd.gpio_o;
       uart_tx = bd.uart_tx;

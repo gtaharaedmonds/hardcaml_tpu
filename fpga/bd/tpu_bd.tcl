@@ -41,7 +41,7 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
 ################################################################
 
 # To test this script, run the following commands from Vivado Tcl console:
-# source tpu_bd.tcl
+# source tpu_bd_script.tcl
 
 # If there is no project opened, this script will create a
 # project, but make sure you do not have an existing project
@@ -64,7 +64,7 @@ set run_remote_bd_flow 1
 if { $run_remote_bd_flow == 1 } {
    # Set the reference directory for source file relative paths (by default
    # the value is script directory path)
-   set origin_dir output/bd
+   set origin_dir ./src/hardcaml_tpu/fpga/app/demo_system/output/bd
 
    # Use origin directory path location variable, if specified in the tcl shell
    if { [info exists ::origin_dir_loc] } {
@@ -131,6 +131,8 @@ if { $bCheckIPs == 1 } {
       xilinx.com:ip:clk_wiz:6.0\
       xilinx.com:ip:axi_ethernetlite:3.0\
       xilinx.com:ip:mii_to_rmii:2.0\
+      xilinx.com:ip:blk_mem_gen:8.4\
+      xilinx.com:ip:axi_bram_ctrl:4.1\
    "
 
 set list_ips_missing ""
@@ -198,18 +200,6 @@ proc create_root_design { parentCell } {
 
    set eth_rmii [ create_bd_intf_port -mode Master -vlnv xilinx.com:interface:rmii_rtl:1.0 eth_rmii ]
 
-   set s_axi [ create_bd_intf_port -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 s_axi ]
-   set_property -dict [ list \
-      CONFIG.ADDR_WIDTH {32} \
-      CONFIG.DATA_WIDTH {32} \
-      CONFIG.HAS_BURST {0} \
-      CONFIG.HAS_CACHE {0} \
-      CONFIG.HAS_LOCK {0} \
-      CONFIG.HAS_QOS {0} \
-      CONFIG.HAS_REGION {0} \
-      CONFIG.PROTOCOL {AXI4LITE} \
-      ] $s_axi
-
 
    # Create ports
    set sys_clk [ create_bd_port -dir I -type clk -freq_hz 100000000 sys_clk ]
@@ -222,9 +212,6 @@ proc create_root_design { parentCell } {
    set eth_refclk [ create_bd_port -dir O -type clk eth_refclk ]
    set s_axi_aresetn [ create_bd_port -dir O s_axi_aresetn ]
    set s_axi_aclk [ create_bd_port -dir O -type clk s_axi_aclk ]
-   set_property -dict [ list \
-      CONFIG.ASSOCIATED_BUSIF {s_axi} \
-      ] $s_axi_aclk
 
    # Create instance: neorv32_vivado_ip_0, and set properties
    set neorv32_vivado_ip_0 [ create_bd_cell -type ip -vlnv NEORV32:user:neorv32_vivado_ip:1.0 neorv32_vivado_ip_0 ]
@@ -290,22 +277,41 @@ proc create_root_design { parentCell } {
 
    # Create instance: axi_interconnect_0, and set properties
    set axi_interconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0 ]
+   set_property -dict [list \
+      CONFIG.NUM_MI {2} \
+      CONFIG.NUM_SI {1} \
+      ] $axi_interconnect_0
+
+
+   # Create instance: blk_mem_gen_0, and set properties
+   set blk_mem_gen_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:blk_mem_gen:8.4 blk_mem_gen_0 ]
+   set_property CONFIG.Memory_Type {Single_Port_RAM} $blk_mem_gen_0
+
+
+   # Create instance: axi_bram_ctrl_0, and set properties
+   set axi_bram_ctrl_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.1 axi_bram_ctrl_0 ]
+   set_property -dict [list \
+      CONFIG.PROTOCOL {AXI4} \
+      CONFIG.SINGLE_PORT_BRAM {1} \
+      ] $axi_bram_ctrl_0
+
 
    # Create interface connections
+   connect_bd_intf_net -intf_net axi_bram_ctrl_0_BRAM_PORTA [get_bd_intf_pins axi_bram_ctrl_0/BRAM_PORTA] [get_bd_intf_pins blk_mem_gen_0/BRAM_PORTA]
    connect_bd_intf_net -intf_net axi_ethernetlite_0_MDIO [get_bd_intf_ports eth_mdio] [get_bd_intf_pins axi_ethernetlite_0/MDIO]
    connect_bd_intf_net -intf_net axi_ethernetlite_0_MII [get_bd_intf_pins axi_ethernetlite_0/MII] [get_bd_intf_pins mii_to_rmii_0/MII]
    connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_ethernetlite_0/S_AXI] [get_bd_intf_pins axi_interconnect_0/M00_AXI]
-   connect_bd_intf_net -intf_net axi_interconnect_0_M01_AXI [get_bd_intf_ports s_axi] [get_bd_intf_pins axi_interconnect_0/M01_AXI]
+   connect_bd_intf_net -intf_net axi_interconnect_0_M01_AXI [get_bd_intf_pins axi_interconnect_0/M01_AXI] [get_bd_intf_pins axi_bram_ctrl_0/S_AXI]
    connect_bd_intf_net -intf_net mii_to_rmii_0_RMII_PHY_M [get_bd_intf_ports eth_rmii] [get_bd_intf_pins mii_to_rmii_0/RMII_PHY_M]
    connect_bd_intf_net -intf_net neorv32_vivado_ip_0_m_axi [get_bd_intf_pins neorv32_vivado_ip_0/m_axi] [get_bd_intf_pins axi_interconnect_0/S00_AXI]
 
    # Create port connections
    connect_bd_net -net axi_ethernetlite_0_ip2intc_irpt [get_bd_pins axi_ethernetlite_0/ip2intc_irpt] [get_bd_pins neorv32_vivado_ip_0/mext_irq_i]
    connect_bd_net -net axi_ethernetlite_0_phy_rst_n [get_bd_pins axi_ethernetlite_0/phy_rst_n] [get_bd_ports eth_rst_n]
-   connect_bd_net -net clk_wiz_0_clk_out1 [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins axi_ethernetlite_0/s_axi_aclk] [get_bd_pins neorv32_vivado_ip_0/clk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_ports s_axi_aclk]
+   connect_bd_net -net clk_wiz_0_clk_out1 [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins axi_ethernetlite_0/s_axi_aclk] [get_bd_pins neorv32_vivado_ip_0/clk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_ports s_axi_aclk] [get_bd_pins axi_bram_ctrl_0/s_axi_aclk]
    connect_bd_net -net clk_wiz_0_clk_out2 [get_bd_pins clk_wiz_0/clk_out2] [get_bd_pins mii_to_rmii_0/ref_clk]
    connect_bd_net -net clk_wiz_0_clk_out3 [get_bd_pins clk_wiz_0/clk_out3] [get_bd_ports eth_refclk]
-   connect_bd_net -net clk_wiz_0_locked [get_bd_pins clk_wiz_0/locked] [get_bd_pins axi_ethernetlite_0/s_axi_aresetn] [get_bd_pins neorv32_vivado_ip_0/resetn] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins mii_to_rmii_0/rst_n] [get_bd_ports s_axi_aresetn]
+   connect_bd_net -net clk_wiz_0_locked [get_bd_pins clk_wiz_0/locked] [get_bd_pins axi_ethernetlite_0/s_axi_aresetn] [get_bd_pins neorv32_vivado_ip_0/resetn] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins mii_to_rmii_0/rst_n] [get_bd_ports s_axi_aresetn] [get_bd_pins axi_bram_ctrl_0/s_axi_aresetn]
    connect_bd_net -net gpio_i_1 [get_bd_ports gpio_i] [get_bd_pins neorv32_vivado_ip_0/gpio_i]
    connect_bd_net -net neorv32_vivado_ip_0_uart0_txd_o [get_bd_pins neorv32_vivado_ip_0/uart0_txd_o] [get_bd_ports uart_tx]
    connect_bd_net -net neorv32_vivado_ip_1_gpio_o [get_bd_pins neorv32_vivado_ip_0/gpio_o] [get_bd_ports gpio_o]
@@ -314,14 +320,13 @@ proc create_root_design { parentCell } {
    connect_bd_net -net uart_rx_1 [get_bd_ports uart_rx] [get_bd_pins neorv32_vivado_ip_0/uart0_rxd_i]
 
    # Create address segments
+   assign_bd_address -offset 0xF0010000 -range 0x00010000 -target_address_space [get_bd_addr_spaces neorv32_vivado_ip_0/m_axi] [get_bd_addr_segs axi_bram_ctrl_0/S_AXI/Mem0] -force
    assign_bd_address -offset 0xF0000000 -range 0x00010000 -target_address_space [get_bd_addr_spaces neorv32_vivado_ip_0/m_axi] [get_bd_addr_segs axi_ethernetlite_0/S_AXI/Reg] -force
-   assign_bd_address -offset 0xF0010000 -range 0x00010000 -target_address_space [get_bd_addr_spaces neorv32_vivado_ip_0/m_axi] [get_bd_addr_segs s_axi/Reg] -force
 
 
    # Restore current instance
    current_bd_instance $oldCurInst
 
-   validate_bd_design
    save_bd_design
 }
 # End of create_root_design()
@@ -333,4 +338,6 @@ proc create_root_design { parentCell } {
 
 create_root_design ""
 
+
+common::send_gid_msg -ssname BD::TCL -id 2053 -severity "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
 

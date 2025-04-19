@@ -9,7 +9,6 @@ module I : sig
     gpio_i : 'a; [@bits 8]
     eth_rmii : 'a Rmii.I.t; [@rtlprefix "eth_rmii_"]
     eth_mdio : 'a Mdio.I.t; [@rtlprefix "eth_mdio_"]
-    axi : 'a Axi.Slave_to_master.t; [@rtlprefix "s_axi_"]
   }
   [@@deriving sexp_of, hardcaml]
 end
@@ -24,7 +23,6 @@ module O : sig
     eth_mdio : 'a Mdio.O.t; [@rtlprefix "eth_mdio_"]
     s_axi_aclk : 'a;
     s_axi_aresetn : 'a;
-    axi : 'a Axi.Master_to_slave.t; [@rtlprefix "s_axi_"]
   }
   [@@deriving sexp_of, hardcaml]
 end
