@@ -12,18 +12,25 @@ module type Config = sig
 end
 
 module type S = sig
-  (* module Stream : Stream.S *)
-  (* module Systolic_array : Systolic_array.S *)
-  (* 
+  module Config : Config
+  module Systolic_array : Systolic_array.S
+
+  module Stream : sig
+    module Weight_in : Stream.S
+    module Data_in : Stream.S
+    module Acc_out : Stream.S
+  end
+
   module I : sig
     type 'a t = {
       reset : 'a;
       clock : 'a;
       clear_accs : 'a;
       start : 'a;
-      data_source : 'a Stream.Source.t; [@rtlprefix "data_source_"]
-      acc_dest : 'a Stream.Dest.t; [@rtlprefix "acc_dest_"]
-      weight_source : 'a Stream.Source.t; [@rtlprefix "weight_source_"]
+      weight_source : 'a Stream.Weight_in.Source.t;
+          [@rtlprefix "weight_source_"]
+      data_source : 'a Stream.Data_in.Source.t; [@rtlprefix "data_source_"]
+      acc_dest : 'a Stream.Acc_out.Dest.t; [@rtlprefix "acc_dest_"]
     }
     [@@deriving hardcaml]
   end
@@ -32,16 +39,14 @@ module type S = sig
     type 'a t = {
       ready : 'a;
       finished : 'a;
-      weight_dest : 'a Stream.Dest.t;
-      data_dest : 'a Stream.Dest.t;
-      acc_source : 'a Stream.Source.t;
-      acc_out : 'a Systolic_array.Acc_matrix.t;
+      weight_dest : 'a Stream.Weight_in.Dest.t; [@rtlprefix "weight_dest_"]
+      data_dest : 'a Stream.Data_in.Dest.t; [@rtlprefix "data_dest_"]
+      acc_source : 'a Stream.Acc_out.Source.t; [@rtlprefix "acc_source_"]
     }
     [@@deriving hardcaml]
   end
 
-  val create : Signal.t I.t -> Signal.t O.t *)
-
+  val create : Signal.t I.t -> Signal.t O.t
 end
 
 module type Tpu = sig

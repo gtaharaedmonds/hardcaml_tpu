@@ -30,6 +30,11 @@ module Make (Config : Config) = struct
 
   let mapi t ~f = create ~f:(fun row col -> get t ~row ~col |> f row col)
 
+  let of_list lst =
+    create ~f:(fun row col ->
+        let row_lst = List.nth_exn lst row in
+        List.nth_exn row_lst col)
+
   let pp t to_string =
     (* get dimensions *)
     let num_rows = List.length t.rows in

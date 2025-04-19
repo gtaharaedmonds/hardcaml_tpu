@@ -22,6 +22,7 @@ module type S = sig
   val iteri : 'a t -> f:(int -> int -> 'a -> unit) -> unit
   val mapi : 'a t -> f:(int -> int -> 'a -> 'b) -> 'b t
   val pp : 'a t -> ('a -> String.t) -> unit
+  val of_list : 'a list list -> 'a t
 end
 
 module type Matrix = sig

@@ -104,15 +104,6 @@ module Make (Config : Config) = struct
   let create (i : _ I.t) =
     let open Signal in
     let ready, finished = create_sm i in
-    let data_wavefront =
-      Data_wavefront.create ~transpose:true
-        {
-          Data_wavefront.I.clock = i.clock;
-          reset = i.reset;
-          load = i.start;
-          data = i.data_in;
-        }
-    in
     let weight_wavefront =
       Weight_wavefront.create ~transpose:false
         {
@@ -120,6 +111,15 @@ module Make (Config : Config) = struct
           reset = i.reset;
           load = i.start;
           data = i.weight_in;
+        }
+    in
+    let data_wavefront =
+      Data_wavefront.create ~transpose:true
+        {
+          Data_wavefront.I.clock = i.clock;
+          reset = i.reset;
+          load = i.start;
+          data = i.data_in;
         }
     in
     let cell_ins =
@@ -137,17 +137,17 @@ module Make (Config : Config) = struct
           Mac_cell.create cell_in)
     in
     Generic_matrix.iteri cell_ins ~f:(fun row col cell_in ->
-        (* connect cell data outputs to adjacent data inputs *)
-        cell_in.data_in
-        <==
-        if row = 0 then List.nth_exn data_wavefront.wavefront col
-        else (Generic_matrix.get cell_outs ~row:(row - 1) ~col).data_out;
-
         (* connect cell weight outputs to adjacent weight inputs *)
         cell_in.weight_in
         <==
         if col = 0 then List.nth_exn weight_wavefront.wavefront row
-        else (Generic_matrix.get cell_outs ~row ~col:(col - 1)).weight_out);
+        else (Generic_matrix.get cell_outs ~row ~col:(col - 1)).weight_out;
+
+        (* connect cell data outputs to adjacent data inputs *)
+        cell_in.data_in
+        <==
+        if row = 0 then List.nth_exn data_wavefront.wavefront col
+        else (Generic_matrix.get cell_outs ~row:(row - 1) ~col).data_out);
     {
       O.acc_out =
         Acc_matrix.create ~f:(fun row col ->
@@ -170,17 +170,17 @@ let%expect_test "systolic_array_testbench" =
   let waves, sim = Waveform.create sim in
   let i = Cyclesim.inputs sim in
   let cycle () = Cyclesim.cycle sim in
-  let assign_data ~f =
-    Data_matrix.iteri i.data_in ~f:(fun row col d ->
-        d := Bits.of_int ~width:data_bits (f row col))
-  in
   let assign_weight ~f =
     Weight_matrix.iteri i.weight_in ~f:(fun row col d ->
         d := Bits.of_int ~width:data_bits (f row col))
   in
+  let assign_data ~f =
+    Data_matrix.iteri i.data_in ~f:(fun row col d ->
+        d := Bits.of_int ~width:data_bits (f row col))
+  in
   cycle ();
-  assign_data ~f:(fun row col -> (row * size) + col + 1);
   assign_weight ~f:(fun row col -> (row * size) + col + 1);
+  assign_data ~f:(fun row col -> (row * size) + col + 1);
   cycle ();
   i.start := Bits.vdd;
   cycle ();

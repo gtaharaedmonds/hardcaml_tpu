@@ -2,16 +2,16 @@ open Base
 open! Hardcaml
 
 module type Config = sig
-  val data_bits : int
   val weight_bits : int
+  val data_bits : int
   val acc_bits : int
   val size : int
 end
 
 module type S = sig
   module Config : Config
-  module Data_matrix : Matrix.S
   module Weight_matrix : Matrix.S
+  module Data_matrix : Matrix.S
   module Acc_matrix : Matrix.S
 
   module I : sig
