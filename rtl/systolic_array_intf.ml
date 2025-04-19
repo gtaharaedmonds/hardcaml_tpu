@@ -9,6 +9,7 @@ module type Config = sig
 end
 
 module type S = sig
+  module Config : Config
   module Data_matrix : Matrix.S
   module Weight_matrix : Matrix.S
   module Acc_matrix : Matrix.S
