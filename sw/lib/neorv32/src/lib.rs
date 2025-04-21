@@ -20,3 +20,19 @@ fn panic(info: &PanicInfo) -> ! {
     println!("Panic! {:?}", info);
     loop {}
 }
+
+# [riscv :: pac_enum (unsafe ExternalInterruptNumber)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+
+enum Interrupt {
+    Uart0Rx = 2,
+    Uart0Tx = 3,
+    Uart1Rx = 4,
+    Uart1Tx = 5,
+    Gpio = 8,
+}
+
+#[riscv_rt::external_interrupt(Interrupt::Gpio)]
+fn gpio() -> ! {
+    loop {}
+}

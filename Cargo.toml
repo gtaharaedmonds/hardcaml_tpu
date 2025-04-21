@@ -5,6 +5,7 @@ members = [
     "sw/app/blinky",
     "sw/app/ethernet_demo",
     # "sw/app/ethernet_demo_client",
-    "sw/app/axi_demo",
+    "sw/app/dma_demo",
+    "sw/app/tpu_app",
 ]
 resolver = "3"
