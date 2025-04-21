@@ -1,0 +1,5 @@
+(executables
+ (names tpu_app)
+ (libraries base hardcaml tpu_nexys)
+ (preprocess
+  (pps ppx_jane)))

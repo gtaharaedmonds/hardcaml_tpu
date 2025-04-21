@@ -8,7 +8,13 @@ module Make (Config : Config) = struct
   open Config
 
   module Source = struct
-    type 'a t = { tvalid : 'a; tdata : 'a [@bits bits] } [@@deriving hardcaml]
+    type 'a t = {
+      tvalid : 'a;
+      tdata : 'a; [@bits bits]
+      tkeep : 'a; [@bits bits / 8]
+      tlast : 'a;
+    }
+    [@@deriving hardcaml]
   end
 
   module Dest = struct
@@ -89,6 +95,8 @@ module Adapter = struct
             {
               Slave.Source.tdata = i.master_source.tdata;
               tvalid = i.master_source.tvalid;
+              tkeep = i.master_source.tkeep;
+              tlast = i.master_source.tlast;
             };
         }
     end
@@ -122,6 +130,8 @@ module Adapter = struct
           compile
             [
               slave_source.tdata <-- output_buf;
+              slave_source.tkeep <--. 0xF;
+              slave_source.tlast <--. 0;
               sm.switch
                 [
                   ( States.Input_incomplete,
@@ -196,6 +206,8 @@ module Adapter = struct
                     (of_int ~width:(width transfer_counter.value) num_transfers
                     -: transfer_counter.value -:. 1)
                     transfer_regs;
+              slave_source.tkeep <--. 0xF;
+              slave_source.tlast <--. 0;
               sm.switch
                 [
                   ( States.Waiting_for_input,
@@ -268,7 +280,7 @@ let%expect_test "equal_widths_testbench" =
   cycle ();
   i.slave_dest.tready := Bits.gnd;
   cycle ();
-  Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:20;
+  Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:25;
   [%expect
     {|
     ┌Signals───────────┐┌Waves───────────────────────────────────────────────────────────────────────────────────┐
@@ -322,7 +334,7 @@ let%expect_test "width_expander_testbench" =
   cycle ();
   i.slave_dest.tready := Bits.gnd;
   cycle ();
-  Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:20;
+  Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:25;
   [%expect
     {|
     ┌Signals───────────┐┌Waves───────────────────────────────────────────────────────────────────────────────────┐
@@ -375,7 +387,7 @@ let%expect_test "width_reducer_testbench" =
   cycle ();
   cycle ();
   cycle ();
-  Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:20;
+  Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:25;
   [%expect
     {|
     ┌Signals───────────┐┌Waves───────────────────────────────────────────────────────────────────────────────────┐

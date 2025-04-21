@@ -52,5 +52,6 @@ end
 module type Tpu = sig
   module type S = S
 
+  module Stream = Stream
   module Make (Config : Config) : S
 end

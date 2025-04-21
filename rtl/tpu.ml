@@ -1,6 +1,7 @@
 open Base
 open! Hardcaml
 open! Hardcaml_waveterm
+module Stream = Stream
 include Tpu_intf
 
 module Make (Config : Config) = struct
@@ -70,6 +71,7 @@ module Make (Config : Config) = struct
   end
 
   let create (i : _ I.t) =
+    let open Signal in
     let weight_slave_dest = Stream.Weight_matrix.Dest.Of_signal.wires () in
     let data_slave_dest = Stream.Data_matrix.Dest.Of_signal.wires () in
     let weight_adapter =
@@ -94,6 +96,8 @@ module Make (Config : Config) = struct
       Systolic_array.Weight_matrix.Of_signal.unpack
         weight_adapter.slave_source.tdata
     in
+    (* IMPORTANT: The weight_adapter.slave_source's tvalid signals aren't used
+    here? Maybe other places I'm not being totally complaint... *)
     let data_in =
       Systolic_array.Data_matrix.Of_signal.unpack
         data_adapter.slave_source.tdata
@@ -124,6 +128,8 @@ module Make (Config : Config) = struct
               Stream.Acc_matrix.Source.tdata =
                 Systolic_array.Acc_matrix.Of_signal.pack systolic_array.acc_out;
               tvalid = systolic_array.finished;
+              tkeep = ones (Stream.Acc_matrix.Config.bits / 8);
+              tlast = gnd;
             };
           slave_dest = { Stream.Acc_out.Dest.tready = i.acc_dest.tready };
         }
@@ -186,8 +192,8 @@ let%expect_test "test_2x2" =
     let data_bits = 8
     let acc_bits = 32
     let size = 2
-    let weight_stream_bits = 8
-    let data_stream_bits = 8
+    let weight_stream_bits = 32
+    let data_stream_bits = 32
     let acc_stream_bits = 32
   end) in
   let sim = Test.Sim.create create in

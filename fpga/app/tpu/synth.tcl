@@ -1,6 +1,6 @@
 set output_dir ./output
 
-create_project demo_system $output_dir/project -part xc7a100tcsg324-1 -force
+create_project tpu $output_dir/project -part xc7a100tcsg324-1 -force
 
 set_property ip_repo_paths {
     ../../../external/neorv32/rtl/system_integration/neorv32_vivado_ip_work/packaged_ip
@@ -8,7 +8,7 @@ set_property ip_repo_paths {
 } [current_project]
 update_ip_catalog
 
-read_verilog $output_dir/demo_system_top.v
+read_verilog $output_dir/tpu_top.v
 read_xdc constraints.xdc
 
 # Import block diagram.
@@ -54,5 +54,5 @@ launch_runs {*}$synth_runs -jobs 4
 wait_on_run {*}$synth_runs
 
 # Top-level synth.
-synth_design -top demo_system_top
+synth_design -top tpu_top
 write_checkpoint -force $output_dir/post_synth.dcp

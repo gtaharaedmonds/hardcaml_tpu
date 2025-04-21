@@ -9,6 +9,8 @@ module type Source = sig
   type 'a t = {
     tvalid : 'a; (* high when data is available *)
     tdata : 'a; (* data bus, valid when tvalid is high *)
+    tkeep : 'a;
+    tlast : 'a;
   }
   [@@deriving hardcaml]
 end

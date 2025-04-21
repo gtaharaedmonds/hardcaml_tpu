@@ -37,24 +37,43 @@ module Nexys = struct
 
   let create (create_fn : create_fn) scope (i : _ I.t) =
     let open Signal in
+    let weight_dest = Config.Tpu.Stream.Weight_in.Dest.Of_signal.wires () in
+    let data_dest = Config.Tpu.Stream.Data_in.Dest.Of_signal.wires () in
+    let acc_source = Config.Tpu.Stream.Acc_out.Source.Of_signal.wires () in
+    let gpio_i = wire 8 in
     let bd =
       Tpu_bd.create
         {
           sys_clk = i.sys_clk;
           rst_n = i.rst_n;
           uart_rx = i.uart_rx;
-          gpio_i = i.switches;
+          gpio_i;
           eth_rmii = i.eth_rmii;
           eth_mdio = i.eth_mdio;
+          axi_mm2s_0 = weight_dest;
+          axi_mm2s_1 = data_dest;
+          axi_s2mm = acc_source;
         }
     in
     let app =
       App.hierarchical create_fn scope
-        { clock = bd.s_axi_aclk; reset = ~:(bd.s_axi_aresetn) }
+        {
+          clock = bd.axi_clk;
+          reset = ~:(bd.axi_rst_n);
+          weight_source = bd.axi_mm2s_0;
+          data_source = bd.axi_mm2s_1;
+          acc_dest = bd.axi_s2mm;
+          gpio_o = bd.gpio_o;
+          switches = i.switches;
+        }
     in
-    ignore app;
+    Config.Tpu.Stream.Weight_in.Dest.Of_signal.assign weight_dest
+      app.weight_dest;
+    Config.Tpu.Stream.Data_in.Dest.Of_signal.assign data_dest app.data_dest;
+    Config.Tpu.Stream.Acc_out.Source.Of_signal.assign acc_source app.acc_source;
+    assign gpio_i app.gpio_i;
     {
-      O.leds = bd.gpio_o;
+      O.leds = app.leds;
       uart_tx = bd.uart_tx;
       eth_ref_clk = bd.eth_refclk;
       eth_rst_n = bd.eth_rst_n;
