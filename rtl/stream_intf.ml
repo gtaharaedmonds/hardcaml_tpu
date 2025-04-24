@@ -9,8 +9,8 @@ module type Source = sig
   type 'a t = {
     tvalid : 'a; (* high when data is available *)
     tdata : 'a; (* data bus, valid when tvalid is high *)
-    tkeep : 'a;
-    tlast : 'a;
+    tkeep : 'a; (* tkeep[i] = 1 if data byte i is valid *)
+    tlast : 'a; (* high for last transfer of packet *)
   }
   [@@deriving hardcaml]
 end
@@ -22,8 +22,7 @@ module type Dest = sig
   [@@deriving hardcaml]
 end
 
-(* some AXI-Stream signals are omitted since I don't plan on using them: tkeep,
-tlast, tid, tuser *)
+(* some AXI-Stream signals are omitted since I don't plan on using them: tid, tuser *)
 
 module type S = sig
   module Config : Config
