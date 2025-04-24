@@ -1,6 +1,7 @@
 open! Base
 open! Hardcaml
 open Hardcaml_waveterm
+open Signal
 include Stream_intf
 
 module Make (Config : Config) = struct
@@ -41,6 +42,7 @@ module Make (Config : Config) = struct
              source.tdata := transfer;
              source.tvalid := Bits.vdd;
              Cyclesim.cycle sim);
+      source.tdata := Bits.zero Config.bits;
       source.tvalid := Bits.gnd;
       Cyclesim.cycle sim
 
@@ -89,17 +91,20 @@ module Adapter = struct
 
     module Equal_widths = struct
       let create (i : _ I.t) =
-        (* transparent passthrough *)
-        {
-          O.master_dest = { Master.Dest.tready = i.slave_dest.tready };
-          slave_source =
+        let reg_spec = Reg_spec.create ~clock:i.clock ~reset:i.reset () in
+        let master_dest = { Master.Dest.tready = i.slave_dest.tready } in
+        let slave_source =
+          Slave.Source.Of_signal.reg
+            ~enable:(i.slave_dest.tready &&: i.master_source.tvalid)
+            reg_spec
             {
               Slave.Source.tdata = i.master_source.tdata;
               tvalid = i.master_source.tvalid;
               tkeep = i.master_source.tkeep;
               tlast = i.master_source.tlast;
-            };
-        }
+            }
+        in
+        { O.master_dest; slave_source }
     end
 
     module Width_expander = struct
@@ -109,7 +114,6 @@ module Adapter = struct
       end
 
       let create (i : _ I.t) =
-        let open Signal in
         let reg_spec = Reg_spec.create ~reset:i.reset ~clock:i.clock () in
         let master_dest = Master.Dest.Of_always.wire zero in
         let slave_source = Slave.Source.Of_always.wire zero in
@@ -181,7 +185,6 @@ module Adapter = struct
       end
 
       let create (i : _ I.t) =
-        let open Signal in
         let reg_spec = Reg_spec.create ~clock:i.clock ~reset:i.reset () in
         let master_dest = Master.Dest.Of_always.wire zero in
         let slave_source = Slave.Source.Of_always.wire zero in
@@ -269,6 +272,7 @@ let%expect_test "equal_widths_testbench" =
   let i = Cyclesim.inputs sim in
   cycle ();
   i.master_source.tvalid := Bits.vdd;
+  i.slave_dest.tready := Bits.vdd;
   i.master_source.tdata := Bits.of_int ~width:8 0x01;
   cycle ();
   i.master_source.tdata := Bits.of_int ~width:8 0x02;
@@ -279,37 +283,34 @@ let%expect_test "equal_widths_testbench" =
   cycle ();
   i.master_source.tvalid := Bits.gnd;
   cycle ();
-  i.slave_dest.tready := Bits.vdd;
-  cycle ();
-  i.slave_dest.tready := Bits.gnd;
   cycle ();
   Waveform.print waves ~wave_width:4 ~display_width:110 ~display_height:25;
   [%expect
     {|
     ┌Signals───────────┐┌Waves───────────────────────────────────────────────────────────────────────────────────┐
-    │                  ││──────────┬─────────┬─────────┬─────────┬───────────────────────────────────────        │
+    │clock             ││┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐    ┌────┐  │
+    │                  ││     └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └────┘    └──│
+    │reset             ││                                                                                        │
+    │                  ││──────────────────────────────────────────────────────────────────────                  │
+    │                  ││──────────┬─────────┬─────────┬─────────┬─────────────────────────────                  │
     │master_source_tdat││ 00       │01       │02       │03       │04                                             │
-    │                  ││──────────┴─────────┴─────────┴─────────┴───────────────────────────────────────        │
+    │                  ││──────────┴─────────┴─────────┴─────────┴─────────────────────────────                  │
     │master_source_tkee││                                                                                        │
-    │                  ││────────────────────────────────────────────────────────────────────────────────        │
+    │                  ││──────────────────────────────────────────────────────────────────────                  │
     │master_source_tlas││                                                                                        │
-    │                  ││────────────────────────────────────────────────────────────────────────────────        │
+    │                  ││──────────────────────────────────────────────────────────────────────                  │
     │master_source_tval││          ┌───────────────────────────────────────┐                                     │
-    │                  ││──────────┘                                       └─────────────────────────────        │
-    │slave_dest_tready ││                                                            ┌─────────┐                 │
-    │                  ││────────────────────────────────────────────────────────────┘         └─────────        │
-    │master_dest_tready││                                                            ┌─────────┐                 │
-    │                  ││────────────────────────────────────────────────────────────┘         └─────────        │
-    │                  ││──────────┬─────────┬─────────┬─────────┬───────────────────────────────────────        │
-    │slave_source_tdata││ 00       │01       │02       │03       │04                                             │
-    │                  ││──────────┴─────────┴─────────┴─────────┴───────────────────────────────────────        │
+    │                  ││──────────┘                                       └───────────────────                  │
+    │slave_dest_tready ││          ┌───────────────────────────────────────────────────────────                  │
+    │                  ││──────────┘                                                                             │
+    │master_dest_tready││          ┌───────────────────────────────────────────────────────────                  │
+    │                  ││──────────┘                                                                             │
+    │                  ││────────────────────┬─────────┬─────────┬─────────┬───────────────────                  │
+    │slave_source_tdata││ 00                 │01       │02       │03       │04                                   │
+    │                  ││────────────────────┴─────────┴─────────┴─────────┴───────────────────                  │
     │slave_source_tkeep││                                                                                        │
-    │                  ││────────────────────────────────────────────────────────────────────────────────        │
+    │                  ││──────────────────────────────────────────────────────────────────────                  │
     │slave_source_tlast││                                                                                        │
-    │                  ││────────────────────────────────────────────────────────────────────────────────        │
-    │slave_source_tvali││          ┌───────────────────────────────────────┐                                     │
-    │                  ││──────────┘                                       └─────────────────────────────        │
-    │                  ││                                                                                        │
     └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────┘
     |}]
 

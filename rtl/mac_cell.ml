@@ -60,16 +60,15 @@ module Make (Config : Config) = struct
     }
 end
 
-let testbench () =
-  let module Mac_cell_test = Make (struct
+let%expect_test "mac_cell_testbench" =
+  let open Make (struct
     let data_bits = 8
     let weight_bits = 8
     let acc_bits = 32
   end) in
-  let open Mac_cell_test.Config in
-  let module Sim = Cyclesim.With_interface (Mac_cell_test.I) (Mac_cell_test.O)
-  in
-  let sim = Sim.create Mac_cell_test.create in
+  let open Config in
+  let module Sim = Cyclesim.With_interface (I) (O) in
+  let sim = Sim.create create in
   let waves, sim = Waveform.create sim in
   let i = Cyclesim.inputs sim in
   let cycle () = Cyclesim.cycle sim in
@@ -92,10 +91,6 @@ let testbench () =
   i.weight_in := Bits.of_int ~width:weight_bits 0x68;
   cycle ();
   cycle ();
-  waves
-
-let%expect_test "mac_cell_testbench" =
-  let waves = testbench () in
   Waveform.print waves ~wave_width:4 ~display_width:120 ~display_height:25;
   [%expect
     {|

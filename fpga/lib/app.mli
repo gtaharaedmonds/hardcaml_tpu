@@ -20,6 +20,7 @@ module O : sig
     acc_source : 'a Config.Tpu.Stream.Acc_out.Source.t;
     gpio_i : 'a;
     leds : 'a;
+    hex_7segs : 'a Hex_7segs.I.t;
   }
   [@@deriving sexp_of, hardcaml]
 end

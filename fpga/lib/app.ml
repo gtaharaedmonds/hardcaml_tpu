@@ -25,6 +25,7 @@ module O = struct
         [@rtlprefix "acc_source_"]
     gpio_i : 'a; [@bits 8]
     leds : 'a; [@bits 8]
+    hex_7segs : 'a Hex_7segs.I.t; [@rtlprefix "hex_7segs_"]
   }
   [@@deriving sexp_of, hardcaml]
 end

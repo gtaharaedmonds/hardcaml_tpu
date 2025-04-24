@@ -42,6 +42,9 @@ module type S = sig
       weight_dest : 'a Stream.Weight_in.Dest.t; [@rtlprefix "weight_dest_"]
       data_dest : 'a Stream.Data_in.Dest.t; [@rtlprefix "data_dest_"]
       acc_source : 'a Stream.Acc_out.Source.t; [@rtlprefix "acc_source_"]
+      debug_weight_in : 'a Systolic_array.Weight_matrix.t;
+      debug_data_in : 'a Systolic_array.Data_matrix.t;
+      debug_acc_out : 'a Systolic_array.Acc_matrix.t;
     }
     [@@deriving hardcaml]
   end
