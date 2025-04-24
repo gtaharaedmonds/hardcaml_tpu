@@ -109,7 +109,7 @@ module Make (Config : Config) = struct
         {
           Weight_wavefront.I.clock = i.clock;
           reset = i.reset;
-          load = i.start;
+          load = i.start &&: ready;
           data = i.weight_in;
         }
     in
@@ -118,7 +118,7 @@ module Make (Config : Config) = struct
         {
           Data_wavefront.I.clock = i.clock;
           reset = i.reset;
-          load = i.start;
+          load = i.start &&: ready;
           data = i.data_in;
         }
     in
