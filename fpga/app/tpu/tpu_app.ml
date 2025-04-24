@@ -40,8 +40,29 @@ let create _scope (i : _ App.I.t) =
     {
       clock = divider_7segs;
       reset = i.reset;
-      Hex_7segs.I.enables = List.init 8 ~f:(fun i -> if i = 3 then gnd else vdd);
-      values = List.init 8 ~f:(fun i -> of_int ~width:4 i);
+      Hex_7segs.I.enables = of_bit_string "11111111" |> bits_lsb;
+      values =
+        List.init 4 ~f:(fun idx ->
+            let debug_select = select i.switches 1 0 in
+            let row = idx / 2 in
+            let col = idx % 2 in
+            let weight =
+              Config.Tpu.Systolic_array.Weight_matrix.get tpu.debug_weight_in
+                ~row ~col
+            in
+            let data =
+              Config.Tpu.Systolic_array.Data_matrix.get tpu.debug_data_in ~row
+                ~col
+            in
+            let acc =
+              Config.Tpu.Systolic_array.Acc_matrix.get tpu.debug_acc_out ~row
+                ~col
+            in
+            let byte =
+              mux debug_select [ weight; data; sel_bottom acc 8; zero 8 ]
+            in
+            [ sel_top byte 4; sel_bottom byte 4 ])
+        |> List.concat;
     }
   in
   {
