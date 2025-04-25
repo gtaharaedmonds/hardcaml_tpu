@@ -18,8 +18,12 @@ let clock_divider reg_spec divide_factor =
 
 let create _scope (i : _ App.I.t) =
   let reg_spec = Reg_spec.create ~clock:i.clock ~reset:i.reset () in
-  let clear_accs = bit i.gpio_o 0 in
-  let start = bit i.gpio_o 1 in
+  let edge_detect s =
+    let prev_s = reg reg_spec s in
+    s &&: ~:prev_s
+  in
+  let clear_accs = edge_detect (bit i.gpio_o 0) in
+  let start = edge_detect (bit i.gpio_o 1) in
   let tpu =
     Config.Tpu.create
       {
@@ -61,7 +65,7 @@ let create _scope (i : _ App.I.t) =
             let byte =
               mux debug_select [ weight; data; sel_bottom acc 8; zero 8 ]
             in
-            [ sel_top byte 4; sel_bottom byte 4 ])
+            [ sel_bottom byte 4; sel_top byte 4 ])
         |> List.concat;
     }
   in
