@@ -58,7 +58,7 @@ module Make (Config : Config) = struct
             let data = !(source.tdata) in
             Cyclesim.cycle sim;
             data)
-        |> Bits.concat_lsb
+        |> Bits.concat_msb
       in
       dest.tready := Bits.gnd;
       Cyclesim.cycle sim;
@@ -206,11 +206,7 @@ module Adapter = struct
         Always.(
           compile
             [
-              slave_source.tdata
-              <-- mux
-                    (of_int ~width:(width transfer_counter.value) num_transfers
-                    -: transfer_counter.value -:. 1)
-                    transfer_regs;
+              slave_source.tdata <-- mux transfer_counter.value transfer_regs;
               slave_source.tkeep <--. 0xF;
               slave_source.tlast <--. 0;
               sm.switch
@@ -388,7 +384,7 @@ let%expect_test "width_reducer_testbench" =
   let i = Cyclesim.inputs sim in
   cycle ();
   i.master_source.tvalid := Bits.vdd;
-  i.master_source.tdata := Bits.of_int ~width:32 0x01020304;
+  i.master_source.tdata := Bits.of_int ~width:32 0x04030201;
   cycle ();
   i.master_source.tvalid := Bits.gnd;
   cycle ();
@@ -410,7 +406,7 @@ let%expect_test "width_reducer_testbench" =
     │reset             ││                                                                                        │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────│
     │                  ││──────────┬─────────────────────────────────────────────────────────────────────────────│
-    │master_source_tdat││ 00000000 │01020304                                                                     │
+    │master_source_tdat││ 00000000 │04030201                                                                     │
     │                  ││──────────┴─────────────────────────────────────────────────────────────────────────────│
     │master_source_tval││          ┌─────────┐                                                                   │
     │                  ││──────────┘         └───────────────────────────────────────────────────────────────────│
