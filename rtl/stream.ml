@@ -89,6 +89,10 @@ module Adapter = struct
       [@@deriving hardcaml]
     end
 
+  (* TODO: My width conversions here use a lot of mux-ing and if-ing which I'd imagine
+     uses a lot of unnecessary LUTs (which I'm in short supply of at the moment!) Think about
+     doing this via pipelined registers instead, one for each separate transfer. *)
+
     module Equal_widths = struct
       let create (i : _ I.t) =
         let reg_spec = Reg_spec.create ~clock:i.clock ~reset:i.reset () in
