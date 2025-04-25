@@ -10,7 +10,7 @@ use xilinx::dma::{DmaRxChannel, DmaTxChannel};
 pub struct Matrix<T, const N: usize>(pub [[T; N]; N]);
 
 impl<T, const N: usize> Matrix<T, N> {
-    pub fn new(data: [[T; N]; N]) -> Self {
+    pub const fn new(data: [[T; N]; N]) -> Self {
         Self(data)
     }
 }

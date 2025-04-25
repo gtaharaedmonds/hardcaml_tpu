@@ -2,13 +2,29 @@
 
 import numpy as np
 
-N = 8
+# N = 8
+
+# if __name__ == "__main__":
+#     weight = np.array([[row * 8 + col for col in range(0, N)] for row in range(0, N)])
+#     data = np.array(
+#         [[64 + row * 8 + col for col in range(0, N)] for row in range(0, N)]
+#     )
+#     result = weight @ data
+
+#     print(weight)
+#     print(data)
+#     print(result)
+
+#     for row in result:
+#         inner = ", ".join(map(str, row))
+#         print(f"[{inner}],")
+
+
+N = 16
 
 if __name__ == "__main__":
-    weight = np.array([[row * 8 + col for col in range(0, N)] for row in range(0, N)])
-    data = np.array(
-        [[64 + row * 8 + col for col in range(0, N)] for row in range(0, N)]
-    )
+    weight = np.array([[(row + col) * 4 for col in range(0, N)] for row in range(0, N)])
+    data = np.array([[(row + col) * 8 for col in range(0, N)] for row in range(0, N)])
     result = weight @ data
 
     print(weight)
