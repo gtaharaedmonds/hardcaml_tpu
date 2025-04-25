@@ -98,12 +98,8 @@ impl DmaTxChannel {
         }
     }
 
-    pub fn transmit_blocking(&mut self, addr: usize, len: usize) {
-        self.transmit(addr, len);
-
-        // Should go back to idle when complete. Using interrupts is probably a
-        // more robust way of handling this.
-        while !self.regs.status.read().idle() {}
+    pub fn idle(&mut self) -> bool {
+        self.regs.status.read().idle()
     }
 }
 
@@ -148,12 +144,8 @@ impl DmaRxChannel {
         }
     }
 
-    pub fn receive_blocking(&mut self, addr: usize, len: usize) {
-        self.receive(addr, len);
-
-        // Should go back to idle when complete. Using interrupts is probably a
-        // more robust way of handling this.
-        while !self.regs.status.read().idle() {}
+    pub fn idle(&mut self) -> bool {
+        self.regs.status.read().idle()
     }
 
     pub fn print_status(&mut self) {

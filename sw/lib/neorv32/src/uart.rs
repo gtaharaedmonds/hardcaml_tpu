@@ -136,6 +136,6 @@ macro_rules! print {
 
 #[macro_export]
 macro_rules! println {
-    () => ($crate::custom_print!("\n"));
+    () => ($crate::print!("\n"));
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
