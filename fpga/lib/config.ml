@@ -5,5 +5,5 @@ module Tpu = Tpu.Make (struct
   let weight_stream_bits = 32
   let data_stream_bits = 32
   let acc_stream_bits = 32
-  let size = 16
+  let size = 8
 end)

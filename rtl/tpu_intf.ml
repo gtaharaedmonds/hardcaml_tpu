@@ -43,13 +43,21 @@ module type S = sig
       data_dest : 'a Stream.Data_in.Dest.t; [@rtlprefix "data_dest_"]
       acc_source : 'a Stream.Acc_out.Source.t; [@rtlprefix "acc_source_"]
       debug_weight_in : 'a Systolic_array.Weight_matrix.t;
+          [@rtlprefix "debug_weight_in_"]
       debug_data_in : 'a Systolic_array.Data_matrix.t;
+          [@rtlprefix "debug_data_in"]
       debug_acc_out : 'a Systolic_array.Acc_matrix.t;
+          [@rtlprefix "debug_acc_out_"]
     }
     [@@deriving hardcaml]
   end
 
-  val create : Signal.t I.t -> Signal.t O.t
+  val create :
+    ?name:string ->
+    ?hierarchical:bool ->
+    Scope.t ->
+    Signal.t I.t ->
+    Signal.t O.t
 end
 
 module type Tpu = sig

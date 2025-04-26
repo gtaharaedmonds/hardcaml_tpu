@@ -76,12 +76,12 @@ module Make (Config : Config) = struct
     [@@deriving hardcaml]
   end
 
-  let create (i : _ I.t) =
+  let create_fn ?hierarchical scope (i : _ I.t) =
     let open Signal in
     let weight_slave_dest = Stream.Weight_matrix.Dest.Of_signal.wires () in
     let data_slave_dest = Stream.Data_matrix.Dest.Of_signal.wires () in
     let weight_adapter =
-      Stream.Weight_adapter.create
+      Stream.Weight_adapter.create ?hierarchical scope
         {
           Stream.Weight_adapter.I.clock = i.clock;
           reset = i.reset;
@@ -90,7 +90,7 @@ module Make (Config : Config) = struct
         }
     in
     let data_adapter =
-      Stream.Data_adapter.create
+      Stream.Data_adapter.create ?hierarchical scope
         {
           Stream.Data_adapter.I.clock = i.clock;
           reset = i.reset;
@@ -107,7 +107,7 @@ module Make (Config : Config) = struct
         data_adapter.slave_source.tdata
     in
     let systolic_array =
-      Systolic_array.create
+      Systolic_array.create ?hierarchical scope
         {
           Systolic_array.I.clock = i.clock;
           reset = i.reset;
@@ -123,7 +123,7 @@ module Make (Config : Config) = struct
     Stream.Data_matrix.Dest.Of_signal.assign data_slave_dest
       { Stream.Data_matrix.Dest.tready = systolic_array.ready };
     let acc_adapter =
-      Stream.Acc_adapter.create
+      Stream.Acc_adapter.create ?hierarchical scope
         {
           Stream.Acc_adapter.I.clock = i.clock;
           reset = i.reset;
@@ -148,6 +148,15 @@ module Make (Config : Config) = struct
       debug_data_in = data_in;
       debug_acc_out = systolic_array.acc_out;
     }
+
+  let create ?(name = "tpu") ?(hierarchical = false) scope input =
+    if hierarchical then
+      let module Hierarchy = Hierarchy.In_scope (I) (O) in
+      let output =
+        Hierarchy.hierarchical ~name ~scope (create_fn ~hierarchical) input
+      in
+      output
+    else (create_fn ~hierarchical) scope input
 
   module Test = struct
     module Sim = Cyclesim.With_interface (I) (O)
@@ -203,7 +212,8 @@ let%expect_test "test_2x2" =
     let data_stream_bits = 32
     let acc_stream_bits = 32
   end) in
-  let sim = Test.Sim.create create in
+  let scope = Scope.create () in
+  let sim = Test.Sim.create (create scope) in
   Test.send_weight sim (Test.Matrix.of_list [ [ 1; 2 ]; [ 3; 4 ] ]);
   Test.send_data sim (Test.Matrix.of_list [ [ 5; 6 ]; [ 7; 8 ] ]);
   Test.start sim;
@@ -228,7 +238,8 @@ let%expect_test "test_4x4" =
     let data_stream_bits = 8
     let acc_stream_bits = 32
   end) in
-  let sim = Test.Sim.create create in
+  let scope = Scope.create () in
+  let sim = Test.Sim.create (create scope) in
   Test.send_weight sim
     (Test.Matrix.of_list
        [ [ 1; 2; 3; 4 ]; [ 1; 2; 3; 4 ]; [ 1; 2; 3; 4 ]; [ 1; 2; 3; 4 ] ]);
@@ -259,7 +270,8 @@ let%expect_test "test_wide_streams" =
     let data_stream_bits = 32
     let acc_stream_bits = 128
   end) in
-  let sim = Test.Sim.create create in
+  let scope = Scope.create () in
+  let sim = Test.Sim.create (create scope) in
   Test.send_weight sim (Test.Matrix.of_list [ [ 2; 0 ]; [ 0; 2 ] ]);
   Test.send_data sim (Test.Matrix.of_list [ [ 5; 6 ]; [ 7; 8 ] ]);
   Test.start sim;
@@ -284,7 +296,8 @@ let%expect_test "test_data_weight_different_widths" =
     let data_stream_bits = 8
     let acc_stream_bits = 32
   end) in
-  let sim = Test.Sim.create create in
+  let scope = Scope.create () in
+  let sim = Test.Sim.create (create scope) in
   Test.send_weight sim (Test.Matrix.of_list [ [ 1; 2 ]; [ 3; 4 ] ]);
   Test.send_data sim (Test.Matrix.of_list [ [ 2; 0 ]; [ 0; 2 ] ]);
   Test.start sim;
@@ -308,7 +321,8 @@ let%expect_test "tpu_testbench" =
     let data_stream_bits = 32
     let acc_stream_bits = 32
   end) in
-  let sim = Test.Sim.create create in
+  let scope = Scope.create () in
+  let sim = Test.Sim.create (create scope) in
   let waves, sim = Waveform.create sim in
   let i = Cyclesim.inputs sim in
   let cycle () = Cyclesim.cycle sim in

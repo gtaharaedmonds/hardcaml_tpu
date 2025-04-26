@@ -16,7 +16,7 @@ let clock_divider reg_spec divide_factor =
   reg_fb reg_spec ~width:1 ~f:(fun output ->
       mux2 (divider_count ==:. half_divide_factor - 1) ~:output output)
 
-let create _scope (i : _ App.I.t) =
+let create scope (i : _ App.I.t) =
   let reg_spec = Reg_spec.create ~clock:i.clock ~reset:i.reset () in
   let edge_detect s =
     let prev_s = reg reg_spec s in
@@ -25,7 +25,7 @@ let create _scope (i : _ App.I.t) =
   let clear_accs = edge_detect (bit i.gpio_o 0) in
   let start = edge_detect (bit i.gpio_o 1) in
   let tpu =
-    Config.Tpu.create
+    Config.Tpu.create ~hierarchical:false scope
       {
         Config.Tpu.I.clock = i.clock;
         reset = i.reset;

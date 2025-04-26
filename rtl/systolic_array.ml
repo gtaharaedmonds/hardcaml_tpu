@@ -101,11 +101,11 @@ module Make (Config : Config) = struct
         ]);
     (ready.value, finished.value)
 
-  let create (i : _ I.t) =
+  let create_fn ?hierarchical scope (i : _ I.t) =
     let open Signal in
     let ready, finished = create_sm i in
     let weight_wavefront =
-      Weight_wavefront.create ~transpose:false
+      Weight_wavefront.create ?hierarchical scope ~transpose:false
         {
           Weight_wavefront.I.clock = i.clock;
           reset = i.reset;
@@ -114,7 +114,7 @@ module Make (Config : Config) = struct
         }
     in
     let data_wavefront =
-      Data_wavefront.create ~transpose:true
+      Data_wavefront.create ?hierarchical scope ~transpose:true
         {
           Data_wavefront.I.clock = i.clock;
           reset = i.reset;
@@ -134,7 +134,7 @@ module Make (Config : Config) = struct
     in
     let cell_outs =
       Generic_matrix.mapi cell_ins ~f:(fun _ _ cell_in ->
-          Mac_cell.create cell_in)
+          Mac_cell.create ?hierarchical scope cell_in)
     in
     Generic_matrix.iteri cell_ins ~f:(fun row col cell_in ->
         (* connect cell weight outputs to adjacent weight inputs *)
@@ -155,6 +155,15 @@ module Make (Config : Config) = struct
       finished;
       ready;
     }
+
+  let create ?(name = "systolic_array") ?(hierarchical = false) scope input =
+    if hierarchical then
+      let module Hierarchy = Hierarchy.In_scope (I) (O) in
+      let output =
+        Hierarchy.hierarchical ~name ~scope (create_fn ~hierarchical) input
+      in
+      output
+    else (create_fn ~hierarchical) scope input
 end
 
 let%expect_test "systolic_array_testbench" =
@@ -166,7 +175,8 @@ let%expect_test "systolic_array_testbench" =
   end) in
   let open Config in
   let module Sim = Cyclesim.With_interface (I) (O) in
-  let sim = Sim.create create in
+  let scope = Scope.create () in
+  let sim = Sim.create (create scope) in
   let waves, sim = Waveform.create sim in
   let i = Cyclesim.inputs sim in
   let cycle () = Cyclesim.cycle sim in

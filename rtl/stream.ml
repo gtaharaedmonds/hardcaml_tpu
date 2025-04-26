@@ -250,10 +250,17 @@ module Adapter = struct
         }
     end
 
-    let create =
+    let create_fn _scope =
       if Master.Config.bits = Slave.Config.bits then Equal_widths.create
       else if Master.Config.bits < Slave.Config.bits then Width_expander.create
       else Width_reducer.create
+
+    let create ?(name = "stream_adapter") ?(hierarchical = false) scope input =
+      if hierarchical then
+        let module Hierarchy = Hierarchy.In_scope (I) (O) in
+        let output = Hierarchy.hierarchical ~name ~scope create_fn input in
+        output
+      else create_fn scope input
   end
 end
 
@@ -266,7 +273,8 @@ let%expect_test "equal_widths_testbench" =
   end) in
   let open Adapter.Make (Master) (Slave) in
   let module Sim = Cyclesim.With_interface (I) (O) in
-  let sim = Sim.create create in
+  let scope = Scope.create () in
+  let sim = Sim.create (create scope) in
   let waves, sim = Waveform.create sim in
   let cycle () = Cyclesim.cycle sim in
   let i = Cyclesim.inputs sim in
@@ -323,7 +331,8 @@ let%expect_test "width_expander_testbench" =
   end) in
   let open Adapter.Make (Master) (Slave) in
   let module Sim = Cyclesim.With_interface (I) (O) in
-  let sim = Sim.create create in
+  let scope = Scope.create () in
+  let sim = Sim.create (create scope) in
   let waves, sim = Waveform.create sim in
   let cycle () = Cyclesim.cycle sim in
   let i = Cyclesim.inputs sim in
@@ -382,7 +391,8 @@ let%expect_test "width_reducer_testbench" =
   end) in
   let open Adapter.Make (Master) (Slave) in
   let module Sim = Cyclesim.With_interface (I) (O) in
-  let sim = Sim.create create in
+  let scope = Scope.create () in
+  let sim = Sim.create (create scope) in
   let waves, sim = Waveform.create sim in
   let cycle () = Cyclesim.cycle sim in
   let i = Cyclesim.inputs sim in

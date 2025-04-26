@@ -19,7 +19,7 @@ module Make (Matrix : Matrix.S) = struct
     [@@deriving hardcaml]
   end
 
-  let create ~transpose (i : _ I.t) =
+  let create_fn _scope ~transpose (i : _ I.t) =
     let open Signal in
     let reg_spec = Reg_spec.create ~reset:i.reset ~clock:i.clock () in
     let stages =
@@ -51,15 +51,26 @@ module Make (Matrix : Matrix.S) = struct
       |> Array.to_list
     in
     { O.wavefront }
+
+  let create ?(name = "triangular_wavefront") ?(hierarchical = false) scope
+      ~transpose input =
+    if hierarchical then
+      let module Hierarchy = Hierarchy.In_scope (I) (O) in
+      let output =
+        Hierarchy.hierarchical ~name ~scope (create_fn ~transpose) input
+      in
+      output
+    else create_fn ~transpose scope input
 end
 
-let testbench () =
+let%expect_test "triangular_wavefront_testbench" =
   let open Make (Matrix.Make (struct
     let bits = 8
     let size = 3
   end)) in
   let module Sim = Cyclesim.With_interface (I) (O) in
-  let sim = Sim.create (create ~transpose:false) in
+  let scope = Scope.create () in
+  let sim = Sim.create (create scope ~transpose:false) in
   let waves, sim = Waveform.create sim in
   let i = Cyclesim.inputs sim in
   let cycle () = Cyclesim.cycle sim in
@@ -75,10 +86,6 @@ let testbench () =
   cycle ();
   cycle ();
   cycle ();
-  waves
-
-let%expect_test "triangular_wavefront_testbench" =
-  let waves = testbench () in
   Waveform.print waves ~display_width:90 ~display_height:50;
   [%expect
     {|

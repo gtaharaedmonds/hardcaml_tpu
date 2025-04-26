@@ -70,7 +70,12 @@ module type Adapter = sig
     [@@deriving hardcaml]
   end
 
-  val create : Signal.t I.t -> Signal.t O.t
+  val create :
+    ?name:string ->
+    ?hierarchical:bool ->
+    Scope.t ->
+    Signal.t I.t ->
+    Signal.t O.t
 end
 
 module type Stream = sig

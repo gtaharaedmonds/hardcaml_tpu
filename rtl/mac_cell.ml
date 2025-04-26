@@ -27,7 +27,7 @@ module Make (Config : Config) = struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  let create (i : _ I.t) =
+  let create_fn _scope (i : _ I.t) =
     let open Signal in
     let reg_async = Reg_spec.create ~reset:i.reset ~clock:i.clock () in
     let weight_out = Always.Variable.reg ~width:weight_bits reg_async in
@@ -58,6 +58,13 @@ module Make (Config : Config) = struct
       data_out = data_out.value;
       acc_out = acc_out.value;
     }
+
+  let create ?(name = "mac_cell") ?(hierarchical = false) scope input =
+    if hierarchical then
+      let module Hierarchy = Hierarchy.In_scope (I) (O) in
+      let output = Hierarchy.hierarchical ~name ~scope create_fn input in
+      output
+    else create_fn scope input
 end
 
 let%expect_test "mac_cell_testbench" =
@@ -68,7 +75,8 @@ let%expect_test "mac_cell_testbench" =
   end) in
   let open Config in
   let module Sim = Cyclesim.With_interface (I) (O) in
-  let sim = Sim.create create in
+  let scope = Scope.create () in
+  let sim = Sim.create (create scope) in
   let waves, sim = Waveform.create sim in
   let i = Cyclesim.inputs sim in
   let cycle () = Cyclesim.cycle sim in

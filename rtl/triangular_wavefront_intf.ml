@@ -13,7 +13,13 @@ module type S = sig
     type 'a t = { wavefront : 'a list } [@@deriving hardcaml]
   end
 
-  val create : transpose:bool -> Signal.t I.t -> Signal.t O.t
+  val create :
+    ?name:string ->
+    ?hierarchical:bool ->
+    Scope.t ->
+    transpose:bool ->
+    Signal.t I.t ->
+    Signal.t O.t
 end
 
 module type Triangular_wavefront = sig
